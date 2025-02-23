@@ -8,7 +8,10 @@ void kernel_start(void)
     init_console();
     setup_base(0 /* la memoire virtuelle n'est pas encore definie */);
 
-    console_putchar('a');
+    console_putbytes("Hello world!\n", 13);
+    console_putbytes("a\n", 2);
+    console_putbytes("_", 1);  // Pour voir où le curseur se place
+
     // lancement des interruptions
     sti();
 

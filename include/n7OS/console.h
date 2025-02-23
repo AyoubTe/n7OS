@@ -39,6 +39,12 @@
 
 void init_console();
 
+void update_cursor(int x, int y);
+
+void console_putchar(const char c);
+
+
+
 /*
  * This is the function called by printf to send its output to the screen. You
  * have to implement it in the kernel and in the user program.
