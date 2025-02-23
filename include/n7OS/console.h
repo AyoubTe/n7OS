@@ -2,6 +2,7 @@
 #define __CONSOLE_H__
 
 #include <inttypes.h>
+#include <stddef.h>
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
@@ -39,11 +40,9 @@
 
 void init_console();
 
-void update_cursor(int x, int y);
+void update_cursor(size_t x, size_t y);
 
 void console_putchar(const char c);
-
-
 
 /*
  * This is the function called by printf to send its output to the screen. You

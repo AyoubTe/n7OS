@@ -76,3 +76,4 @@ entry2:
 hang:
 	jmp hang
 
+.section .note.GNU-stack,"",@progbits

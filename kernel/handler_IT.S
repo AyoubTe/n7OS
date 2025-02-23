@@ -1,4 +1,5 @@
 .text
+.section .note.GNU-stack,"",@progbits
 # cette directive sert a rendre l'etiquette publique
     .globl handler_IT
 # debut du traitant

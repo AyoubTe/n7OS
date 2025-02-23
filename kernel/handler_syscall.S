@@ -1,5 +1,5 @@
 .text
-
+.section .note.GNU-stack,"",@progbits
 # c'est le nombre total d'appels systeme
 nr_syscall = 1
 

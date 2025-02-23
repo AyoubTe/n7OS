@@ -8,7 +8,7 @@
  * @param addr Adresse de la page à allouer
  */
 void setPage(uint32_t addr) {
-
+    (void)addr;
 }
 
 /**
@@ -19,7 +19,7 @@ void setPage(uint32_t addr) {
  * @param addr Adresse de la page à libérer
  */
 void clearPage(uint32_t addr) {
-
+    (void)addr;
 }
 
 /**

@@ -15,12 +15,12 @@ void init_console() {
     update_cursor(0, 0);
 }
 
-void update_cursor(int x, int y) {
+void update_cursor(size_t x, size_t y) {
     uint16_t pos = y * VGA_WIDTH + x;
-    outb(0x3D4, 0x0F);
-    outb(0x3D5, (uint8_t)(pos & 0xFF));
-    outb(0x3D4, 0x0E);
-    outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
+    outb(0x0F, PORT_CMD);  // Valeur 0x0F envoyée au port 0x3D4
+    outb((uint8_t)(pos & 0xFF), PORT_DATA);
+    outb(0x0E, PORT_CMD);  // Valeur 0x0E envoyée au port 0x3D4
+    outb((uint8_t)((pos >> 8) & 0xFF), PORT_DATA);
 }
 
 void scroll_screen() {
@@ -35,6 +35,7 @@ void scroll_screen() {
             scr_tab[(VGA_HEIGHT - 1) * VGA_WIDTH + x] = (0x0F << 8) | ' ';
         }
         cursor_y = VGA_HEIGHT - 1;
+        cursor_x = 0;
     }
 }
 
@@ -57,13 +58,14 @@ void console_putchar(char c) {
             cursor_x = VGA_WIDTH - 1;
         }
         scr_tab[cursor_y * VGA_WIDTH + cursor_x] = (0x0F << 8) | ' ';
-    } else if (c == '\t') {  // Tabulation (alignement à 8)
-        int next_tab_stop = (cursor_x + 8) & ~(8 - 1);
-        if (next_tab_stop >= VGA_WIDTH) {
+    } else if (c == '\t') {  // Tabulation (fill with spaces to next 8th column)
+        do {
+            scr_tab[cursor_y * VGA_WIDTH + cursor_x] = (0x0F << 8) | ' ';
+            cursor_x++;
+        } while (cursor_x % 8 != 0 && cursor_x < VGA_WIDTH);
+        if (cursor_x >= VGA_WIDTH) {
             cursor_x = 0;
             cursor_y++;
-        } else {
-            cursor_x = next_tab_stop;
         }
     } else if (c == '\f') {  // Effacer l'écran
         init_console();
@@ -73,6 +75,15 @@ void console_putchar(char c) {
     }
 
     scroll_screen();
+
+    if (cursor_x >= VGA_WIDTH) {
+        cursor_x = 0;
+        cursor_y++;
+    }
+    if (cursor_y >= VGA_HEIGHT) {
+        cursor_y = VGA_HEIGHT - 1;
+    }
+
     update_cursor(cursor_x, cursor_y);
 }
 
