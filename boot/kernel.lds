@@ -64,8 +64,6 @@ SECTIONS {
 	/* Beginning of kernel memory heap */
 	mem_heap = _end;
 
-	PROVIDE(mem_heap = _end);
-
 	/* End of kernel memory heap */
 	mem_heap_end = 0x1000000;
 }

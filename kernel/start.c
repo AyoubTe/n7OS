@@ -8,15 +8,15 @@
 
 void kernel_start(void)
 {
-    setup_base(0 /* la memoire virtuelle n'est pas encore definie */);
-    console_putbytes("Base setup OK\n", 15);
-
     init_console();
     console_putbytes("Booting...\n", 11);
+
+    setup_base(0 /* la memoire virtuelle n'est pas encore definie */);
+    console_putbytes("Base setup OK\n", 15);
     
     // Initialisation de la pagination
-    // initialise_paging();
-    // console_putbytes("Paging initialised!\n", 20);
+    initialise_paging();
+    console_putbytes("Paging initialised!\n", 20);
 
     // // Test simple : allouer une page virtuelle et y écrire
     // uint32_t test_addr = 0x100000; // Adresse virtuelle exemple
