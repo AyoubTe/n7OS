@@ -43,25 +43,27 @@ void setPageEntry(PTE *page_table_entry, uint32_t new_page, int is_writeable, in
  * 7. Active la pagination en appelant enablePaging().
  */
 void initialise_paging() {
-    console_putbytes("init_mem()\n", 11);
+    uint32_t indice = 0;
+
     init_mem();
 
-    console_putbytes("Page directory alloc\n", 22);
     pageDirectory = (PageDirectory) kmalloc_a(sizeof(PDE) * 1024);
     if (!pageDirectory) {
         panic("Page directory null");
     }
     
     memset(pageDirectory, 0, sizeof(PDE) * 1024);
-
     for (int i = 0; i < 1024; i++) {
         PageTable new_page_table = (PageTable) kmalloc_a(sizeof(PTE) * 1024);
+        if (!new_page_table || (uint32_t)new_page_table == 0) {
+            panic("Page table null");
+        }
         memset(new_page_table, 0, sizeof(PTE) * 1024);
         pageDirectory[i].value = (uint32_t)new_page_table | 1 | 2; // Présent + RW
+        indice = (uint32_t) new_page_table + sizeof(PTE) * 1024;
     }
 
-    // Mapping simple de la première zone mémoire (identité)
-    for (uint32_t addr = 0; addr < 0x400000; addr += PAGE_SIZE) {
+    for (uint32_t addr = 0; addr < indice; addr += PAGE_SIZE) {
         alloc_page_entry(addr, 1, 1);
     }
 
@@ -85,24 +87,50 @@ void initialise_paging() {
  * @note Cette fonction déclenche une panique si aucune page physique libre n'est disponible.
  */
 PageTable alloc_page_entry(uint32_t address, int is_writeable, int is_kernel) {
-    uint32_t dir_index = (address >> 22) & 0x3FF;
-    uint32_t table_index = (address >> 12) & 0x3FF;
+    // address = adresse virtuelle à allouer 
+    // address = idx_PDE | idx_PTE | offset
+    //             10    |    10   |   12
 
-    PageTable page_table = (PageTable)(pageDirectory[dir_index].value & 0xFFFFF000);
-    if (page_table == NULL) {
+    // Calcul de la position de la table de page dans le répertoire de pages (10 bits de poids fort)
+    int idx_pagedir = (address >> 22) & 0x3FF;
+
+    PageTable page_table;
+
+    // Récupération de l'entrée dans le répertoire de pages
+    PDE page_dir_entry = pageDirectory[idx_pagedir];
+
+    // Récupération de l'adresse de la table des pages
+    if (page_dir_entry.value & 1) {
+        // Si la table de pages existe déjà (bit présent = 1), on récupère son adresse
+        page_table = (PageTable)(page_dir_entry.value & 0xFFFFF000);
+    } else {
+        // Sinon, on alloue une nouvelle table de pages
         page_table = (PageTable)kmalloc_a(sizeof(PTE) * 1024);
+        if (page_table == NULL) {
+            panic("Échec d'allocation de la table de pages");
+        }
         memset(page_table, 0, sizeof(PTE) * 1024);
-        pageDirectory[dir_index].value = (uint32_t)page_table | 1 | 2; // Présent + RW
+
+        // Mise à jour de l'entrée dans le répertoire de pages
+        page_dir_entry.value = (uint32_t)page_table | 1 | 2; // Présent + RW
+        pageDirectory[idx_pagedir] = page_dir_entry;
     }
 
-    uint32_t phys_page = findfreePage();
-    if (phys_page == 0) {
+    // Recherche d'une page physique libre
+    uint32_t phy_page = findfreePage();
+    if (phy_page == 0) {
         panic("Plus de pages physiques disponibles");
     }
 
-    setPageEntry(&page_table[table_index], phys_page, is_writeable, is_kernel);
+    // Calcul de la position de la page dans la table de pages (bits 12-21)
+    int idx_pagetab = (address >> 12) & 0x3FF;
+
+    // Mise à jour de l'entrée dans la table de pages
+    setPageEntry(&page_table[idx_pagetab], phy_page, is_writeable, is_kernel);
+
     return page_table;
 }
+
 
 
 /**
