@@ -4,7 +4,7 @@
 
 #define BITMAP_SIZE (LAST_MEMORY_INDEX / PAGE_SIZE / 8)
 
-static uint8_t bitmap[LAST_MEMORY_INDEX]; // Bitmap pour suivre l'état des pages
+static uint8_t bitmap[BITMAP_SIZE]; // Bitmap pour suivre l'état des pages
 
 /**
  * @brief Marque la page allouée
