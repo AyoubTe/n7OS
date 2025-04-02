@@ -1,6 +1,5 @@
     .text
     .globl ctx_sw
-    .section .note.GNU-stack,"",@progbits
 # Structure de la pile en entree :
 #   %esp + 4 : adresse de l'ancien contexte
 #   %esp + 8 : adresse du nouveau contexte

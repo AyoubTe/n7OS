@@ -58,5 +58,3 @@ SERV_EXC_TASK(28)
 SERV_EXC_TASK(29)
 SERV_EXC_TASK(30)
 SERV_EXC_TASK(31)
-
-.section .note.GNU-stack,"",@progbits

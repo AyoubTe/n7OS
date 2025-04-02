@@ -1,36 +1,31 @@
 #include <n7OS/cpu.h>
-#include <inttypes.h>
 #include <n7OS/processor_structs.h>
 #include <n7OS/console.h>
 #include <n7OS/paging.h>
-#include <n7OS/mem.h>
 #include <n7OS/kheap.h>
+#include <stdio.h>
+#include <inttypes.h>
 
 void kernel_start(void)
 {
+    init_kheap();
     init_console();
-    console_putbytes("Booting...\n", 11);
-
-    setup_base(0 /* la memoire virtuelle n'est pas encore definie */);
-    console_putbytes("Base setup OK\n", 15);
+    uint32_t base = initialise_paging();
+    /* la memoire virtuelle est definie */
+    setup_base(base);
     
-    // Initialisation de la pagination
-    initialise_paging();
-    console_putbytes("Paging initialised!\n", 20);
+    printf("Hello, world from kernel\n");
 
-    // // Test simple : allouer une page virtuelle et y écrire
-    // uint32_t test_addr = 0x100000; // Adresse virtuelle exemple
-    // alloc_page_entry(test_addr, 1, 1); // RW, kernel mode
-
-    // uint32_t *test_page = (uint32_t*) test_addr;
-    // *test_page = 0xDEADBEEF;  // On écrit une valeur test
-
-    // if (*test_page == 0xDEADBEEF) {
-    //     console_putbytes("Page mapping OK!\n", 18);
-    // } else {
-    //     console_putbytes("Page mapping FAILED!\n", 22);
-    // }
-
+    // 4. Test memory mapping
+    uint32_t test_addr = 0x500000; // Test address beyond initial mapping
+    alloc_page_entry(test_addr, 1, 1);
+    uint32_t *test_page = (uint32_t*)test_addr;
+    *test_page = 0xDEADBEEF;
+    if (*test_page == 0xDEADBEEF) {
+         console_putbytes("Page mapping OK!\n", 18);
+    } else {
+         console_putbytes("Page mapping FAILED!\n", 22);
+    }
 
     // lancement des interruptions
     sti();

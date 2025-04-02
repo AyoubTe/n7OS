@@ -1,13 +1,10 @@
 #include <n7OS/mem.h>
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 
-// Nombre maximal des pages
-#define MAX_PAGES (LAST_MEMORY_INDEX / PAGE_SIZE)
+#define BITMAP_SIZE (LAST_MEMORY_INDEX / PAGE_SIZE / 8)
 
-// une bitmap pour savoir quelles pages sont libres ou allouées
-static uint32_t free_page_bitmap[MAX_PAGES / 32];
-
+static uint8_t bitmap[LAST_MEMORY_INDEX]; // Bitmap pour suivre l'état des pages
 
 /**
  * @brief Marque la page allouée
@@ -17,8 +14,8 @@ static uint32_t free_page_bitmap[MAX_PAGES / 32];
  * @param addr Adresse de la page à allouer
  */
 void setPage(uint32_t addr) {
-    uint32_t page = addr / PAGE_SIZE;
-    free_page_bitmap[page / 32] |= (1 << (page % 32));
+    uint32_t pageIndex = addr / PAGE_SIZE;
+    bitmap[pageIndex / 8] |= (1 << (pageIndex % 8));
 }
 
 /**
@@ -29,8 +26,8 @@ void setPage(uint32_t addr) {
  * @param addr Adresse de la page à libérer
  */
 void clearPage(uint32_t addr) {
-    uint32_t page = addr / PAGE_SIZE;
-    free_page_bitmap[page / 32] &= ~(1 << (page % 32));
+    uint32_t pageIndex = addr / PAGE_SIZE;
+    bitmap[pageIndex / 8] &= ~(1 << (pageIndex % 8));
 }
 
 /**
@@ -39,20 +36,18 @@ void clearPage(uint32_t addr) {
  * @return uint32_t Adresse de la page sélectionnée
  */
 uint32_t findfreePage() {
-    for (uint32_t i = 0; i < MAX_PAGES / 32; i++) {
-        if (free_page_bitmap[i] != 0xFFFFFFFF) {
-            for (uint32_t j = 0; j < 32; j++) {
-                if (!(free_page_bitmap[i] & (1 << j))) {
-                    uint32_t page_addr = (i * 32 + j) * PAGE_SIZE;
-                    setPage(page_addr);
-                    printf("Found free page at 0x%x\n", page_addr);
-                    return page_addr;
+    for (uint32_t i = 0; i < BITMAP_SIZE; i++) {
+        if (bitmap[i] != 0xFF) { // Si un octet contient une page libre
+            for (uint8_t j = 0; j < 8; j++) {
+                if (!(bitmap[i] & (1 << j))) { // Une page libre a été trouvée
+                    uint32_t freePage = (i * 8 + j) * PAGE_SIZE;
+                    setPage(freePage);
+                    return freePage;
                 }
             }
         }
     }
-    printf("No free pages available\n");
-    return 0; // Plus de pages libres
+    return 0; // Pas de page libre trouvée
 }
 
 /**
@@ -60,8 +55,7 @@ uint32_t findfreePage() {
  * 
  */
 void init_mem() {
-    memset(free_page_bitmap, 0, sizeof(free_page_bitmap));
-    printf("Memory initialized successfully\n");
+    memset(bitmap, 0, sizeof(bitmap)); // Initialise le bitmap à 0 (aucune page allouée)
 }
 
 /**
@@ -69,9 +63,14 @@ void init_mem() {
  * 
  */
 void print_mem() {
-    for (uint32_t i = 0; i < MAX_PAGES; i++) {
-        if (free_page_bitmap[i / 32] & (1 << (i % 32))) {
-            printf("Page %u allouée\n", i);
+    for (uint32_t i = 0; i < BITMAP_SIZE; i++) {
+        for (uint8_t j = 0; j < 8; j++) {
+            uint32_t pageAddr = (i * 8 + j) * PAGE_SIZE;
+            if (bitmap[i] & (1 << j)) {
+                printf("Page 0x%08X: Allouée\n", pageAddr);
+            } else {
+                printf("Page 0x%08X: Libre\n", pageAddr);
+            }
         }
     }
 }
