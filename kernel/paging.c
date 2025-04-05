@@ -7,32 +7,11 @@
 /// Répertoire de pages du noyau utilisé pour la gestion de la pagination
 static PageDir directory;
 
-void handler_page_fault(registers_t reg) {
-    uint32_t faulting_address;
-    __asm__ __volatile__("mov %%cr2, %0" : "=r" (faulting_address));
-
-    int present  = !(reg.err_code & 0x1); // Page non présente si 0
-    int rw       = reg.err_code & 0x2;      // Écriture ?
-    int us       = reg.err_code & 0x4;      // Mode utilisateur ?
-    int reserved = reg.err_code & 0x8;      // Bits réservés écrasés ?
-    int id       = reg.err_code & 0x10;     // Défaut lors d'un fetch d'instruction ?
-
-    printf("Page fault! ( ");
-    if (present)  { printf("present "); }
-    if (rw)       { printf("read-only "); }
-    if (us)       { printf("user-mode "); }
-    if (reserved) { printf("reserved "); }
-    if (id)       { printf("instruction "); }
-    printf(") at 0x%x\n", faulting_address);
-
-    panic("Page fault");
-}
-
 /**
  * @brief Initialise la pagination en créant le répertoire de pages, en configurant
  *        un mapping identité pour la zone du noyau et en activant la pagination.
  */
-uint32_t initialise_paging() {
+PageDir initialise_paging() {
     int i, j;
 
     /* Allocation du répertoire de pages (1024 entrées) avec alignement sur page */
@@ -55,12 +34,14 @@ uint32_t initialise_paging() {
         directory[i].value = ((uint32_t)pgtab & 0xFFFFF000) | PAGE_PRESENT | PAGE_RW;
     }
 
+    // register_interrupt_handler(14, handler_page_fault);
+
     /* Charger le répertoire de pages et activer la pagination */
     loadPageDirectory((unsigned int*) directory);
     enablePaging();
 
-    /* Retourner l'adresse maximale allouée par le noyau via kmalloc */
-    return kmalloc(0);
+    /* Retourner le répertoire de tables de pages */
+    return directory;
 
 }
 
@@ -109,6 +90,23 @@ PageTable alloc_page_entry(uint32_t address, int is_writeable, int is_kernel) {
     return pgtab;
 }
 
+
+/**
+ * @brief Sets up a page table entry with the specified attributes.
+ *
+ * This function initializes a page table entry with the given page address,
+ * write permissions, and privilege level (kernel or user).
+ *
+ * @param page_table_entry Pointer to the page table entry (PTE) to be configured.
+ * @param new_page The physical address of the new page to be mapped. The address
+ *                 is shifted right by 12 bits to fit into the page table entry.
+ * @param is_writeable A flag indicating whether the page should be writable (1 for writable, 0 for read-only).
+ * @param is_kernel A flag indicating whether the page is for kernel mode (1 for kernel, 0 for user mode).
+ *
+ * @note The `present` field of the page table entry is set to 1, indicating that
+ *       the page is present in memory. The `accessed` and `dirty` fields are
+ *       initialized to 0.
+ */
 void setPageEntry(PTE *page_table_entry, uint32_t new_page, int is_writeable, int is_kernel) {
     page_table_entry->page_entry.present= 1;
     page_table_entry->page_entry.accessed= 0;
@@ -139,4 +137,51 @@ void enablePaging() {
         :
         : "memory"
     );
+}
+
+
+/**
+ * @brief Gère une exception de défaut de page (page fault).
+ *
+ * Cette fonction est appelée lorsqu'un défaut de page se produit. Elle récupère
+ * l'adresse fautive à l'origine du défaut de page et analyse le code d'erreur
+ * pour déterminer la cause du défaut. Ensuite, elle affiche des informations
+ * détaillées sur le défaut de page et déclenche un arrêt du système via la
+ * fonction panic.
+ *
+ * @param reg Structure contenant les registres au moment de l'exception.
+ *            Le champ `err_code` de cette structure contient le code d'erreur
+ *            associé au défaut de page.
+ *
+ * @details
+ * Le code d'erreur est analysé pour identifier les causes possibles :
+ * - Bit 0 : La page n'est pas présente en mémoire (0 si absente).
+ * - Bit 1 : Défaut causé par une tentative d'écriture sur une page en lecture seule.
+ * - Bit 2 : Défaut survenu en mode utilisateur (1 si mode utilisateur).
+ * - Bit 3 : Bits réservés écrasés dans l'entrée de la table de pages.
+ * - Bit 4 : Défaut causé par une tentative de fetch d'instruction.
+ *
+ * La fonction affiche un message décrivant les causes possibles du défaut de page
+ * ainsi que l'adresse fautive. Enfin, elle appelle la fonction `panic` pour
+ * arrêter le système.
+ */
+void handler_page_fault(registers_t reg) {
+    uint32_t faulting_address;
+    __asm__ __volatile__("mov %%cr2, %0" : "=r" (faulting_address));
+
+    int present  = !(reg.err_code & 0x1); // Page non présente si 0
+    int rw       = reg.err_code & 0x2;      // Écriture ?
+    int us       = reg.err_code & 0x4;      // Mode utilisateur ?
+    int reserved = reg.err_code & 0x8;      // Bits réservés écrasés ?
+    int id       = reg.err_code & 0x10;     // Défaut lors d'un fetch d'instruction ?
+
+    printf("Page fault! ( ");
+    if (present)  { printf("present "); }
+    if (rw)       { printf("read-only "); }
+    if (us)       { printf("user-mode "); }
+    if (reserved) { printf("reserved "); }
+    if (id)       { printf("instruction "); }
+    printf(") at 0x%x\n", faulting_address);
+
+    panic("Page fault");
 }

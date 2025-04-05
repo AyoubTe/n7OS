@@ -1,3 +1,5 @@
+   .section .note.GNU-stack,"",@progbits
+
 .text
 # cette directive sert a rendre l'etiquette publique
     .globl handler_IT

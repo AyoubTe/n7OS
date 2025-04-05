@@ -1,3 +1,5 @@
+   .section .note.GNU-stack,"",@progbits
+
 #define SERV_EXC_TASK(id) \
 	.text; \
 trap##id: \

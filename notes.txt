@@ -1,31 +1,38 @@
-
-/**
- * @brief Charge le répertoire de pages spécifié dans le registre CR3.
- *
- * Cette fonction utilise une instruction d'assemblage inline pour charger
- * l'adresse du répertoire de pages dans le registre de contrôle CR3, ce qui
- * permet de changer le contexte de pagination.
- *
- * @param dir Pointeur vers le répertoire de pages à charger.
- */
-void loadPageDirectory(unsigned int *pageDirectory){
-    __asm__ __volatile__("\n\t movl %0, %%cr3" :: "a" (pageDirectory));
+// Extraction de la recherche d'un PID libre
+pid_t findFreePID() {
+    for (int i = 0; i < MAX_PROCESS; i++) {
+        if (process_table[i].state == TERMINE) {
+            return i;
+        }
+    }
+    return -1;
 }
 
+// Extraction de l'initialisation du contexte du processus
+void initProcessContext(pid_t pid, const char *processName, void (*function)()) {
+    process_table[pid].pid = pid;
+    process_table[pid].name = processName;
+    process_table[pid].state = PRET_ACTIF;
+    process_table[pid].stack_top = STACK_SIZE - 1;
+    process_table[pid].function = function;
+    for (int i = 0; i < 5; i++) {
+        process_table[pid].regs[i] = 0;
+    }
+    // Initialisation du registre esp
+    process_table[pid].regs[1] = (uint32_t)&process_table[pid].stack[STACK_SIZE - 1];
+}
 
-/**
- * @brief Active la pagination en définissant le bit PG (bit 31) du registre CR0.
- *
- * Cette fonction lit la valeur actuelle du registre CR0, définit le bit 31
- * pour activer la pagination, puis écrit la nouvelle valeur dans le registre CR0.
- *
- * @note Cette opération est critique pour le fonctionnement du système d'exploitation
- * et doit être effectuée avec précaution.
- */
-void enablePaging(){
-    __asm__ __volatile__(
-        "\n\t movl %%cr0,%%eax"
-        "\n\t orl $0x80000000,%%eax"
-        "\n\t movl %%eax,%%cr0" ::
-    );
+pid_t creer(const char *processName, void (*function)()) {
+    pid_t pid = findFreePID();
+    if (pid == -1) {
+        printf("Erreur : impossible de créer un nouveau processus\n");
+        return -1;
+    }
+
+    initProcessContext(pid, processName, function);
+
+    // Ajout à la file des processus prêts
+    addProcess(pid);
+
+    return pid;
 }

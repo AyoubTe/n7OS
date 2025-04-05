@@ -1,3 +1,5 @@
+   .section .note.GNU-stack,"",@progbits
+
 .text
 
 # c'est le nombre total d'appels systeme

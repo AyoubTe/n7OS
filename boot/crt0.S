@@ -21,6 +21,8 @@
  */
 #include <n7OS/start.h>
 
+   .section .note.GNU-stack,"",@progbits
+
 	.text
 	.comm   first_stack,FIRST_STACK_SIZE,32
 	.comm   multiboot_magic,4,4

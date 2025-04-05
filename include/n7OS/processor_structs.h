@@ -3,9 +3,9 @@
 
 #define GDT_ENTRIES	8192
 #include <n7OS/segment.h>
+#include <inttypes.h>
 
 #define IDT_ENTRIES	256
-
 
 #ifndef ASSEMBLER
 
@@ -43,12 +43,31 @@ struct x86_tss {
                                            bit map */
 };
 
+// Global Descriptor Table (table descripteur global)
 extern unsigned long long gdt[GDT_ENTRIES];
-extern unsigned long long idt[IDT_ENTRIES];
+
+// Interrupt Descriptor Table (table descripteur d'interruption)
+extern unsigned long long idt[IDT_ENTRIES]; // IDT (Interrupt Descriptor Table)
 extern struct x86_tss tss;
 
 #endif
 
 void setup_base(int pgdir);
+
+/*  Mes fonctions */
+/**
+ * @brief Initializes the Global Descriptor Table (GDT).
+ */
+void init_gdt();
+
+/**
+ * @brief Initializes the Interrupt Descriptor Table (IDT).
+ */
+void init_idt();
+
+/**
+ * @brief Initializes the Task State Segment (TSS).
+ */
+void init_tss();
 
 #endif

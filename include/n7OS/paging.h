@@ -77,7 +77,7 @@ typedef PDE * PageDir;
  *        et active la pagination
  * 
  */
-uint32_t initialise_paging();
+PageDir initialise_paging();
 
 /**
  * @brief Cette fonction alloue une page de la mémoire physique à une adresse de la mémoire virtuelle
@@ -90,7 +90,6 @@ uint32_t initialise_paging();
 PageTable alloc_page_entry(uint32_t address, int is_writeable, int is_kernel);
 
 void setPageEntry(PTE *page_table_entry, uint32_t new_page, int is_writeable, int is_kernel);
-
 
 typedef struct {
     uint32_t ds;                                     // Segment data

@@ -1,14 +1,2 @@
-# Ignore les paramètres de IDE jeatbrean
-.idea
-
-#Ignore les paramètres de Vscode
-.vscode
-
-# Ignore les résultats de la compilation
-*.o
-
-# Ignore le bin
-*.bin
-
-#Ignore les fichiers des notes
-*.txt
+.docs
+*.text

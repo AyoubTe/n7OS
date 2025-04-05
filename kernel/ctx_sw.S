@@ -1,3 +1,5 @@
+   .section .note.GNU-stack,"",@progbits
+
     .text
     .globl ctx_sw
 # Structure de la pile en entree :
