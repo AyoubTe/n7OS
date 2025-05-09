@@ -50,4 +50,9 @@ void console_putchar(const char c);
  */
 void console_putbytes(const char *s, int len);
 
+
+void console_putchar_at(uint8_t row, uint8_t col, char c);
+
+void console_putchar_at_attr(uint8_t row, uint8_t col, char c, uint8_t attr);
+
 #endif

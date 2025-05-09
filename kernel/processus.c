@@ -6,8 +6,12 @@
 #include <n7OS/cpu.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <debug.h>
 
+extern void kernel_start(); // point d'entrée
+
+extern void ctx_sw(uint32_t *old_regs, uint32_t *new_regs);
 
 /* Déclarations des tableaux et variables nécessaires */
 // Tableau des processus
@@ -21,10 +25,11 @@ int readyQueueTail = 0;
 pid_t resourceQueue[MAX_PROCESS][MAX_RESOURCE_QUEUE];
 int resourceQueueTail[MAX_PROCESS] = {0};
 
-pid_t creer(const char *name, void (*function)()) {
+pid_t creer_p(const char *name, void (*function)()) {
     pid_t pid = -1;
 
     // Trouver un PID libre
+    // 1) trouver un slot libre
     for (uint32_t i = 0; i < MAX_PROCESS; i++) {
         if (process_table[i].state == TERMINE) {
             pid = i;
@@ -38,26 +43,35 @@ pid_t creer(const char *name, void (*function)()) {
     }
 
     // Initialiser le processus
+    // 2) init méta
     process_table[pid].pid = pid;
     process_table[pid].name = name;
     process_table[pid].state = PRET_ACTIF;
-    process_table[pid].stack_top = STACK_SIZE - 1;
     process_table[pid].function = function;
+    process_table[pid].priority = 0;
 
-    // Initialiser les registres (contexte)
-    for (uint32_t i = 0; i < 5; i++) {
-        process_table[pid].regs[i] = 0;
+    // 3) préparer la pile
+    uint32_t *stack = process_table[pid].stack;
+    // en sommet, mettez l'adresse de la fonction (ret simulé)
+    stack[STACK_SIZE - 1] = (uint32_t)function;
+
+    // 4) contexte initial tous les regs à 0 : regs = { ebx=0, esp=&stack[top], ebp=0, esi=0, edi=0 }
+    for (int r = 0; r < 5; r++) {
+        process_table[pid].regs[r] = 0;
     }
-    process_table[pid].regs[1] = (uint32_t)&process_table[pid].stack[STACK_SIZE - 1]; // esp
 
-    // Ajouter à la file des processus prêts
+    // regs[1] <=> ESP doit pointer sur *stack[top] (pointer ESP sur ce sommet)
+    process_table[pid].regs[1] = (uint32_t)&stack[STACK_SIZE - 1];
+
+
+    // 5) en mettre en file des prêts
     addProcess(pid);
 
     return pid;
 }
 
 
-void activer(pid_t pid) {
+void activer_p(pid_t pid) {
     if (process_table[pid].state == PRET_SUSPENDU) {
         process_table[pid].state = PRET_ACTIF;
         addProcess(pid); // Ajouter à la file des prêts
@@ -66,7 +80,7 @@ void activer(pid_t pid) {
     }
 }
 
-void suspendre(pid_t pid) {
+void suspendre_p(pid_t pid) {
     if (process_table[pid].state == PRET_ACTIF) {
         process_table[pid].state = PRET_SUSPENDU;
         removeProcess(pid);
@@ -75,8 +89,8 @@ void suspendre(pid_t pid) {
     }
 }
 
-void arreter() {
-    pid_t pid = getpid(); // PID du processus en cours
+void arreter_p() {
+    pid_t pid = getpid_p(); // PID du processus en cours
     if (process_table[pid].state == ELU) {
         process_table[pid].state = PRET_ACTIF;
         addProcess(pid);
@@ -84,8 +98,8 @@ void arreter() {
     }
 }
 
-void bloquer(uint32_t rid) {
-    pid_t pid = getpid();
+void bloquer_p(uint32_t rid) {
+    pid_t pid = getpid_p();
     if (process_table[pid].state == ELU) {
         process_table[pid].state = BLOQUE_ACTIF;
         addResource(rid, pid); // Ajouter à la file de la ressource
@@ -93,7 +107,7 @@ void bloquer(uint32_t rid) {
     }
 }
 
-void debloquer(uint32_t rid) {
+void debloquer_p(uint32_t rid) {
     // Parcourir les processus liés à la ressource et les débloquer
     for (int i = 0; i < MAX_PROCESS; i++) {
         if (isProcessWaitingForResource(rid, process_table[i].pid)) {
@@ -108,7 +122,7 @@ void debloquer(uint32_t rid) {
 }
 
 // Récuperer le PID du processus en cours, ici on fait de round robin
-pid_t getpid() {
+pid_t getpid_p() {
     for (int i = 0; i < MAX_PROCESS; i++) {
         if (process_table[i].state == ELU) {
             return process_table[i].pid;
@@ -136,34 +150,6 @@ int isProcessWaitingForResource(uint32_t rid, pid_t pid) {
     // Vérifier si un processus attend une ressource
     return checkResourceQueue(rid, pid);
 }
-
-void schedule() {
-    pid_t current_pid = getpid();
-    pid_t next_pid = -1;
-
-    // Sauvegarder le contexte du processus actuel si actif
-    if ((int)current_pid != -1 && process_table[current_pid].state == ELU) {
-        process_table[current_pid].state = PRET_ACTIF;
-    }
-
-    // Trouver le prochain processus prêt
-    for (int i = 0; i < MAX_PROCESS; i++) {
-        if (process_table[i].state == PRET_ACTIF) {
-            next_pid = i;
-            break;
-        }
-    }
-
-    if ((int)next_pid == -1) {
-        printf("Aucun processus pret\n");
-        return;
-    }
-
-    // Changer de contexte
-    process_table[next_pid].state = ELU;
-    ctx_sw(process_table[current_pid].regs, process_table[next_pid].regs);
-}
-
 
 void enqueueReadyProcess(pid_t pid) {
     // Implémentation de l'ajout d'un processus à la file des processus prêts
@@ -197,51 +183,20 @@ int checkResourceQueue(uint32_t rid, pid_t pid) {
     return 0;
 }
 
-void dummyProcess() {
-    printf("Execution du processus factice.\n");
-}
-
-void test_processus() {
-  	pid_t pid = creer("test", dummyProcess);
-
-    assert((int)pid >= 0);
-    printf("Processus cree avec PID %d.\n", pid);
-
-    // Vérifier l'état initial du processus (attendu PRET_ACTIF)
-    assert(process_table[pid].state == PRET_ACTIF);
-
-    // Suspendre le processus et vérifier son état
-    suspendre(pid);
-    assert(process_table[pid].state == PRET_SUSPENDU);
-    printf("Processus suspendu.\n");
-
-    // Activer le processus et vérifier son état
-    activer(pid);
-    assert(process_table[pid].state == PRET_ACTIF);
-    printf("Processus active.\n");
-
-    // Si nécessaire, simuler la planification pour observer le changement de contexte
-    schedule();
-    // Ici nous pouvons ajouter des vérifications supplémentaires après changement de contexte
-
-    printf("Test de gestion des processus reussi.\n");
-}
-
-
 /* Gestion des appels système */
-pid_t fork(const char *name, void (*fun)()){
-    return creer(name, fun);
+pid_t fork_p(const char *name, void (*fun)()){
+    return creer_p(name, fun);
 }
 
-int exit_process(){
-    pid_t pid = getpid(); // PID du processus en cours
+int exit_p(){
+    pid_t pid = getpid_p(); // PID du processus en cours
+    schedule(); // Passer la main à un autre processus
     process_table[pid].state = TERMINE; // Marquer le processus comme terminé
     removeProcess(pid); // Retirer de la file des prêts
-    schedule(); // Passer la main à un autre processus
     return 0; // Success
 }
 
-int kill(pid_t pid) {
+int kill_p(pid_t pid) {
     if ((int)pid < 0 || pid >= MAX_PROCESS || process_table[pid].state == TERMINE) {
         return -1; // Erreur : processus inexistant
     }
@@ -250,41 +205,111 @@ int kill(pid_t pid) {
     return 0; // Success
 }
 
-int sleep(int seconds) {
-    pid_t pid = getpid(); // Récupérer le processus en cours
-    bloquer(pid); // Bloquer le processus
+int sleep_p(int seconds) {
+    pid_t pid = getpid_p(); // Récupérer le processus en cours
+    bloquer_p(pid); // Bloquer le processus
     // Simuler une attente en fonction des secondes
     for (volatile int i = 0; i < (seconds * 1000000); i++); // Boucle occupée simulant un délai (peut être implémenté par un timer)
-    debloquer(pid); // Débloquer le processus une fois le temps écoulé
+    debloquer_p(pid); // Débloquer le processus une fois le temps écoulé
     return 0;
 }
 
-int wait(pid_t *pid) {
-    pid_t current_pid = getpid();
+int wait_p(pid_t *pid) {
+    pid_t current_pid = getpid_p();
     if ((int)current_pid < 0) {
         return -1;
     }
 
     // Bloquer tant que le processus spécifié n'est pas terminé
-    while (*pid != -1 && process_table[*pid].state != TERMINE) {
-        bloquer(0); // Bloquer tant que le processus enfant s'exécute
+    while ((int)(*pid) != -1 && process_table[*pid].state != TERMINE) {
+        bloquer_p(0); // Bloquer tant que le processus enfant s'exécute
     }
 
     return 0;
 }
 
-void test_syscall() {
-    printf("Test des appels système\n");
 
-    pid_t pid = fork("test_fork", dummyProcess);
-    if ((int)pid > 0) {
-        printf("Parent : processus forké avec PID %d\n", pid);
-        wait(&pid);
-        printf("Parent : processus enfant %d terminé\n", pid);
-    } else if ((int)pid == 0) {
-        printf("Enfant : je suis un processus enfant\n");
+void schedule() {
+    pid_t current = getpid_p();
+    
+    // 1) chercher le premier prêt différent de kernel (0)
+    pid_t next = -1;
+    for (int i = 1; i < MAX_PROCESS; i++) {
+        if (process_table[i].state == PRET_ACTIF) {
+            next = i;
+            break;
+        }
     }
 
-    sleep(1);
-    printf("Fin du test des appels système\n");
+    // 2) Si aucun autre prêt, on reste sur cur (kernel reste ELU)
+    if ((int)next < 0) {
+        next = 0;  // idle
+    }
+
+    // 3) Sinon, on veut basculer vers next
+    if (next == current) {
+        return;
+    } else {
+        //    a) Si current != 0 (noyau), on démote current en PRET_ACTIF
+        process_table[current].state = PRET_ACTIF;
+        //    b) On nomme next élu
+        process_table[next].state = ELU;
+        //    c) Échange de contexte :
+        ctx_sw(process_table[current].regs, process_table[next].regs);
+    }
+}
+
+
+// static void idle() {
+//     while (1) {
+//         hlt();     // met le CPU en low-power en attendant la prochaine IT
+//     }
+// }
+
+void dummyProcess() {
+    printf("Execution du processus factice.\n");
+    exit_p();
+}
+
+void test_processus() {
+  	pid_t pid = creer_p("test", dummyProcess);
+    assert((int)pid >= 0);
+    printf("Processus cree avec PID %d.\n", pid);
+    // Vérifier l'état initial du processus (attendu PRET_ACTIF)
+    assert(process_table[pid].state == PRET_ACTIF);
+
+    // Suspendre le processus et vérifier son état
+    suspendre_p(pid);
+    assert(process_table[pid].state == PRET_SUSPENDU);
+    printf("Processus suspendu.\n");
+
+    // Activer le processus et vérifier son état
+    activer_p(pid);
+    assert(process_table[pid].state == PRET_ACTIF);
+    printf("Processus active.\n");
+
+    printf("Test de gestion des processus reussi.\n");
+}
+
+
+void init_processus() {
+
+    // Le kernel (PID 0)
+    pid_t pid = 0;
+    // Remplir le slot 0
+    process_table[pid].pid       = 0;
+    process_table[pid].name      = "kernel";
+    process_table[pid].state     = ELU;
+    process_table[pid].priority  = 0;
+    process_table[pid].function  = kernel_start; 
+
+    // Récupérer ESP actuel pour démarrer le contexte
+    uint32_t esp;
+    __asm__ volatile("mov %%esp, %0" : "=r" (esp));
+    process_table[pid].regs[1] = esp;  // regs[1] = esp
+
+    // // PID 1 = idle
+    // pid = creer_p("idle", idle);
+    // // on peut lui donner la priorité la plus basse
+    // process_table[pid].priority = 1;
 }

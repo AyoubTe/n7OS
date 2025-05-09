@@ -1,6 +1,9 @@
 #include <n7OS/console.h>
 #include <n7OS/cpu.h>
+#include <n7OS/timer.h>
 #include <stddef.h>
+#include <stdio.h>
+
 
 /**
  * @file console.c
@@ -31,7 +34,7 @@
  * du curseur à l'écran.
  */
 uint16_t *scr_tab = (uint16_t *) SCREEN_ADDR;
-static size_t cursor_x = 0;
+static size_t cursor_x = 2;
 static size_t cursor_y = 0;
 
 /**
@@ -49,7 +52,21 @@ void init_console() {
             scr_tab[y * VGA_WIDTH + x] = (0x0F << 8) | ' ';
         }
     }
-    update_cursor(0, 0);
+    // Afficher le nom de l'OS sur la première ligne (à gauche)
+    const char *os_name = "n7OS";
+    for (int i = 0; os_name[i] != '\0'; i++) {
+        console_putchar_at(0, i, os_name[i]); // Fonction personnalisée
+    }
+
+    printf("\n");
+    printf("\n");
+
+    init_timer();
+
+    // Initialiser l'affichage de l'heure (à droite)
+    //display_uptime();
+
+    update_cursor(2, 0);
 }
 
 /**
@@ -84,7 +101,7 @@ void update_cursor(size_t x, size_t y) {
  */
 void scroll_screen() {
     if (cursor_y >= VGA_HEIGHT) {
-        for (size_t y = 1; y < VGA_HEIGHT; y++) {
+        for (size_t y = 3; y < VGA_HEIGHT; y++) {
             for (size_t x = 0; x < VGA_WIDTH; x++) {
                 scr_tab[(y - 1) * VGA_WIDTH + x] = scr_tab[y * VGA_WIDTH + x];
             }
@@ -145,8 +162,15 @@ void console_putchar(char c) {
             cursor_y++;
         }
     } else if (c == '\f') {  // Effacer l'écran
-        init_console();
-        return;  // Pas besoin de update_cursor après un clear
+        for (size_t y = 2; y < VGA_HEIGHT; y++) {
+            for (size_t x = 0; x < VGA_WIDTH; x++) {
+                scr_tab[y * VGA_WIDTH + x] = (0x0F << 8) | ' ';
+            }
+        }
+        // On place le curseur au début de la 3ème ligne (row=2, col=0)
+        cursor_x = 0;
+        cursor_y = 2;
+ 
     } else if (c == '\r') {  // Retour au début de la ligne
         cursor_x = 0;
     }
@@ -177,4 +201,26 @@ void console_putbytes(const char *s, int len) {
     for (int i = 0; i < len; i++) {
         console_putchar(s[i]);
     }
+}
+
+
+void console_putchar_at(uint8_t row, uint8_t col, char c) {
+    uint16_t *screen = (uint16_t*) SCREEN_ADDR;
+    uint16_t pos = row * VGA_WIDTH + col;
+    screen[pos] = (CHAR_COLOR << 8) | c; // Couleur et caractère
+}
+
+
+// Les améliorartions
+/**
+ * @brief Met un caractère coloré à l’écran.
+ * @param row Ligne (0-index).
+ * @param col Colonne (0-index).
+ * @param c   Caractère ASCII.
+ * @param attr Octet attribut (FG+BG+blink).
+ */
+void console_putchar_at_attr(uint8_t row, uint8_t col, char c, uint8_t attr) {
+    uint16_t *screen = (uint16_t*) SCREEN_ADDR;
+    uint16_t pos = row * VGA_WIDTH + col;
+    screen[pos] = (attr << 8) | c;
 }

@@ -90,23 +90,6 @@ PageTable alloc_page_entry(uint32_t address, int is_writeable, int is_kernel) {
     return pgtab;
 }
 
-
-/**
- * @brief Sets up a page table entry with the specified attributes.
- *
- * This function initializes a page table entry with the given page address,
- * write permissions, and privilege level (kernel or user).
- *
- * @param page_table_entry Pointer to the page table entry (PTE) to be configured.
- * @param new_page The physical address of the new page to be mapped. The address
- *                 is shifted right by 12 bits to fit into the page table entry.
- * @param is_writeable A flag indicating whether the page should be writable (1 for writable, 0 for read-only).
- * @param is_kernel A flag indicating whether the page is for kernel mode (1 for kernel, 0 for user mode).
- *
- * @note The `present` field of the page table entry is set to 1, indicating that
- *       the page is present in memory. The `accessed` and `dirty` fields are
- *       initialized to 0.
- */
 void setPageEntry(PTE *page_table_entry, uint32_t new_page, int is_writeable, int is_kernel) {
     page_table_entry->page_entry.present= 1;
     page_table_entry->page_entry.accessed= 0;
@@ -140,31 +123,6 @@ void enablePaging() {
 }
 
 
-/**
- * @brief Gère une exception de défaut de page (page fault).
- *
- * Cette fonction est appelée lorsqu'un défaut de page se produit. Elle récupère
- * l'adresse fautive à l'origine du défaut de page et analyse le code d'erreur
- * pour déterminer la cause du défaut. Ensuite, elle affiche des informations
- * détaillées sur le défaut de page et déclenche un arrêt du système via la
- * fonction panic.
- *
- * @param reg Structure contenant les registres au moment de l'exception.
- *            Le champ `err_code` de cette structure contient le code d'erreur
- *            associé au défaut de page.
- *
- * @details
- * Le code d'erreur est analysé pour identifier les causes possibles :
- * - Bit 0 : La page n'est pas présente en mémoire (0 si absente).
- * - Bit 1 : Défaut causé par une tentative d'écriture sur une page en lecture seule.
- * - Bit 2 : Défaut survenu en mode utilisateur (1 si mode utilisateur).
- * - Bit 3 : Bits réservés écrasés dans l'entrée de la table de pages.
- * - Bit 4 : Défaut causé par une tentative de fetch d'instruction.
- *
- * La fonction affiche un message décrivant les causes possibles du défaut de page
- * ainsi que l'adresse fautive. Enfin, elle appelle la fonction `panic` pour
- * arrêter le système.
- */
 void handler_page_fault(registers_t reg) {
     uint32_t faulting_address;
     __asm__ __volatile__("mov %%cr2, %0" : "=r" (faulting_address));

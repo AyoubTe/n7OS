@@ -7,6 +7,7 @@
 
 #include <inttypes.h>
 
+
 #define MAX_PROCESS 156 // Nombre maximal de processus
 #define STACK_SIZE 1024  // Taille de la pile d'exécution d'une fonction (exemple : 1 page)
 #define MAX_RESOURCE_QUEUE 500 // Nombre maximal de processus en attente d'un ressource
@@ -34,31 +35,33 @@ struct Process_t {
 
 /* Définir les appels systèmes: */
 
-pid_t fork(const char *name, void (*fun)());
+void init_processus();
 
-int exit_process();
+pid_t fork_p(const char *name, void (*fun)());
 
-int kill(pid_t pid);
+int exit_p();
 
-pid_t getpid();
+int kill_p(pid_t pid);
 
-int sleep(int seconds);
+pid_t getpid_p();
 
-int wait(pid_t *pid);
+int sleep_p(int seconds);
+
+int wait_p(pid_t *pid);
 
 
 /* Les fonctions de gestion des processus */
 extern struct Process_t process_table[MAX_PROCESS]; // Tableau de processus
 
-pid_t creer(const char *name, void (*function)());
+pid_t creer_p(const char *name, void (*function)());
 
-void activer(pid_t pid);
+void activer_p(pid_t pid);
 
-void suspendre(pid_t pid);
+void suspendre_p(pid_t pid);
 
-void arreter();
+void arreter_p();
 
-void bloquer(uint32_t rid);
+void bloquer_p(uint32_t rid);
 
 void schedule();
 
@@ -67,8 +70,6 @@ void addProcess(pid_t pid);
 void removeProcess(pid_t pid);
 
 void addResource(rid_t rid, pid_t pid);
-
-void ctx_sw(uint32_t *old_regs, uint32_t *new_regs);
 
 void enqueueReadyProcess(pid_t pid);
 

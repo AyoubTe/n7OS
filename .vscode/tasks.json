@@ -1,0 +1,45 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build kernel",
+			"type": "shell",
+			"command": "make",
+		},
+		{
+			"label": "Clean kernel",
+			"type": "shell",
+			"command": "make clean",
+		},
+		{
+			"label": "Launch QEMU",
+			"type": "shell",
+			"linux": {
+				"command": "qemu-system-i386 -cpu pentium -rtc base=localtime -k fr -m 256M  -kernel kernel.bin -s -S -daemonize"
+			},
+		},
+		{
+			"label": "kill QEMU",
+			"type": "shell",
+			"linux": {
+				"command": "killall qemu-system-i386"
+			},
+		},
+		{
+			"label": "build and launch QEMU",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Build kernel",
+				"Launch QEMU"
+			]
+		},
+		{
+			"label": "clean and kill QEMU",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Clean kernel",
+				"kill QEMU"
+			]
+		}
+	]
+}

@@ -9,3 +9,5 @@ void add_syscall(int num, fn_ptr function) {
     syscall_table[num]= function;
   }
 }
+
+

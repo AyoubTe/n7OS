@@ -97,4 +97,6 @@ typedef struct {
     uint32_t int_no, err_code;                       // Numéro d'interruption et code d'erreur
     uint32_t eip, cs, eflags, useresp, ss;           // Poussés par le processeur automatiquement
 } registers_t;
+
+//void handler_page_fault(registers_t reg);
 #endif
