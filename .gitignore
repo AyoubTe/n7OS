@@ -1,2 +1,4 @@
 .docs
-*.text
+*.txt
+*.o
+*.bin
