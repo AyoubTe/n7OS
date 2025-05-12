@@ -1,4 +1,6 @@
 .docs
+.idea
+.vscode
 *.txt
 *.o
 *.bin
