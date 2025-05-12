@@ -1,6 +1,8 @@
 #ifndef __UNISTD_H__
 #define __UNISTD_H__
 
+#include <n7OS/processus.h>
+
 // Numéros des appels système
 #define NR_example 0
 #define NR_shutdown 1
@@ -61,5 +63,12 @@ return __res;\
 int example();
 int shutdown(int n);
 int write(const char *s, int len);
+int fork(const char *name, void (*fun)());
+int exit();
+int kill(pid_t pid);
+int get_pid();
+int sleep(int seconds);
+int wait(pid_t *pid);
+int getchar();
 
 #endif

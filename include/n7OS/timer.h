@@ -33,4 +33,9 @@ void display_uptime_boxed();
 void display_uptime_animated();
 
 
+// Génération aléatoires des numéros
+void srand(uint32_t seed);
+int  rand(void);
+
+
 #endif //TIMER_H

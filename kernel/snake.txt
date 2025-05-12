@@ -1,0 +1,224 @@
+#include <n7OS/console.h>
+#include <n7OS/keyboard.h>
+#include <n7OS/processus.h>
+#include <n7OS/timer.h>
+#include <n7OS/irq.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include <inttypes.h>
+
+// Dimensions et position du terrain
+#define W            VGA_WIDTH
+#define H            VGA_HEIGHT
+#define UI_LINES     6
+#define GAME_HEIGHT  (H - UI_LINES - 2)
+#define GAME_TOP     5
+#define GAME_BOTTOM  (H - UI_LINES + 3)
+#define GAME_WIDTH   40
+#define GAME_LEFT    ((W - GAME_WIDTH) / 2)
+#define GAME_RIGHT   (GAME_LEFT + GAME_WIDTH - 1)
+
+// Longueur initiale et maximale, vies
+#define INIT_LEN     5
+#define MAX_LEN      (GAME_WIDTH * GAME_HEIGHT)
+#define MAX_LIVES    5
+#define HEART_CODE   3   // code CP437 pour ♥
+
+// Attributs VGA (F = foreground, B = background)
+#define C_BLUE_BG    0x1F  // blanc sur bleu  
+#define C_RED_FG     0x4F  // rouge sur noir  
+#define C_GREEN_FG   0x2F  // vert sur noir  
+#define C_HEART_ATTR 0x4C  // rouge sur noir (cœur)
+
+typedef struct { int x, y; } coord;
+
+// État du jeu
+static coord snake[MAX_LEN];
+static int   length, dx, dy;
+static coord food;
+static bool  alive;
+static int   lives;
+
+// Externe du timer.c
+extern volatile uint32_t ticks;
+
+// Initialise la graine aléatoire via l’horloge CMOS
+static void init_random_seed(void) {
+    rtc_time_t now;
+    rtc_get_datetime(&now);
+    uint32_t seed = now.sec + now.min * 60 + now.hour * 3600;
+    srand(seed);
+}
+
+// Place la nourriture en vert, à l’intérieur du cadre
+static void place_food(void) {
+    do {
+        food.x = GAME_LEFT + 1 + (rand() % (GAME_WIDTH - 2));
+        food.y = GAME_TOP  + 1 + (rand() % (GAME_HEIGHT - 1));
+    } while (false);
+    console_putchar_at_attr(food.y, food.x, '@', C_GREEN_FG);
+}
+
+// Dessine un cadre bleu autour du terrain
+static void draw_border(void) {
+    for (int x = GAME_LEFT; x <= GAME_RIGHT; x++) {
+        console_putchar_at_attr(GAME_TOP,    x, '-', C_BLUE_BG);
+        console_putchar_at_attr(GAME_BOTTOM, x, '-', C_BLUE_BG);
+    }
+    for (int y = GAME_TOP; y <= GAME_BOTTOM; y++) {
+        console_putchar_at_attr(y, GAME_LEFT,  '|', C_BLUE_BG);
+        console_putchar_at_attr(y, GAME_RIGHT, '|', C_BLUE_BG);
+    }
+    console_putchar_at_attr(GAME_TOP,    GAME_LEFT,  '+', C_BLUE_BG);
+    console_putchar_at_attr(GAME_TOP,    GAME_RIGHT, '+', C_BLUE_BG);
+    console_putchar_at_attr(GAME_BOTTOM, GAME_LEFT,  '+', C_BLUE_BG);
+    console_putchar_at_attr(GAME_BOTTOM, GAME_RIGHT, '+', C_BLUE_BG);
+}
+
+// Affiche les vies en cœurs rouges juste au-dessus du cadre
+static void draw_lives(void) {
+    for (int i = 0; i < lives; i++) {
+        console_putchar_at_attr(GAME_TOP - 1, GAME_LEFT + i * 2, HEART_CODE, C_HEART_ATTR);
+    }
+    // Efface tout reste
+    for (int i = lives; i < MAX_LIVES; i++) {
+        console_putchar_at(GAME_TOP - 1, GAME_LEFT + i * 2, ' ');
+    }
+}
+
+// Efface l’intérieur du jeu (zone sous le cadre)
+static void clear_game_area(void) {
+    for (int y = GAME_TOP + 1; y < GAME_BOTTOM; y++) {
+        for (int x = GAME_LEFT + 1; x < GAME_RIGHT; x++) {
+            console_putchar_at(y, x, ' ');
+        }
+    }
+}
+
+// Dessine la tête en rouge et efface la queue
+static void draw_snake(void) {
+    coord tail = snake[length];
+    console_putchar_at(tail.y, tail.x, ' ');
+    console_putchar_at_attr(snake[0].y, snake[0].x, 'O', C_RED_FG);
+}
+
+// Déplace le serpent, gère collisions et nourriture
+static bool move_snake(void) {
+    for (int i = length; i > 0; i--) {
+        snake[i] = snake[i - 1];
+    }
+    snake[0].x += dx;
+    snake[0].y += dy;
+
+    // Mur ou cadre ?
+    if (snake[0].x <= GAME_LEFT || snake[0].x >= GAME_RIGHT ||
+        snake[0].y <= GAME_TOP  || snake[0].y >= GAME_BOTTOM)
+        return false;
+
+    // Corps ?
+    for (int i = 1; i < length; i++) {
+        if (snake[0].x == snake[i].x && snake[0].y == snake[i].y)
+            return false;
+    }
+
+    // Nourriture ?
+    if (snake[0].x == food.x && snake[0].y == food.y) {
+        if (length < MAX_LEN - 1) length++;
+        place_food();
+    }
+    return true;
+}
+
+// Boucle principale du jeu Snake
+void snake_loop(void) {
+    // Vider l'écran
+    console_putbytes("\f", 1);
+    // 1. Initialisation
+    init_random_seed();
+    length = INIT_LEN; dx = 1; dy = 0; alive = true; lives = 3;
+
+    // 2. UI & terrain
+    clear_game_area();
+    draw_border();
+    draw_lives();
+    place_food();
+
+    // 3. Position initiale du serpent
+    for (int i = 0; i < length; i++) {
+        snake[i].x = GAME_LEFT + GAME_WIDTH / 2 - i;
+        snake[i].y = GAME_BOTTOM - 1;
+        console_putchar_at_attr(snake[i].y, snake[i].x, 'O', C_RED_FG);
+    }
+
+    // 4. Prompt centré en bas
+    const char *msg = "Snake: flèches pour diriger, Q pour quitter.";
+    int msg_w = strlen(msg);
+    int col = (W - msg_w) / 2;
+    update_cursor(col, H - 1);
+    printf("%s", msg);
+
+    // 5. Synchronisation sur timer
+    uint32_t last_tick = ticks;
+
+    // 6. Boucle de jeu
+    while (alive) {
+        int c = kgetch_nb();
+        if (c == (char)0xE0) {
+            c = kgetch_nb();  // vrai code flèche
+        }
+        switch (c) {
+            case 0x4B: dx = -1; dy =  0; break; // ←
+            case 0x50: dx =  0; dy =  1; break; // ↓
+            case 0x4D: dx =  1; dy =  0; break; // →
+            case 0x48: dx =  0; dy = -1; break; // ↑
+            case 'q': case 'Q': alive = false;  break;
+        }
+        if (!alive) break;
+
+        if (!move_snake()) {
+            // Perte de vie
+            lives--;
+            draw_lives();
+            if (lives == 0) { alive = false; break; }
+            // Recentrer
+            snake[0].x = GAME_LEFT + GAME_WIDTH / 2;
+            snake[0].y = GAME_BOTTOM - 1;
+            dx = 1; dy = 0;
+        }
+
+        draw_snake();
+
+        // Attendre le prochain tick
+        while (ticks == last_tick) {
+            schedule();
+        }
+        last_tick = ticks;
+    }
+
+    // 7. Fin de partie
+    update_cursor(0, H - 1);
+    printf("\nGame Over! Score: %d\n", length - INIT_LEN);
+    printf("Rejouer ? (O/N) ");
+
+    // 8. Boucle de confirmation
+    char choice;
+    do {
+        choice = kgetch_nb();
+        if (choice < 0) {
+            schedule();
+            continue;
+        }
+        console_putchar(choice);
+    } while (choice!='O' && choice!='o' && choice!='N' && choice!='n');
+
+    if (choice=='O' || choice=='o') {
+        console_putbytes("\f", 1);
+        snake_loop();  // relance le jeu
+        return;
+    }
+
+    // 9. Retour au shell
+    console_putbytes("\f", 1);
+    exit_p();
+}

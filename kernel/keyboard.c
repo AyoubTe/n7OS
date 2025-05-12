@@ -1,11 +1,15 @@
 #include <n7OS/keyboard.h>
 #include <n7OS/cpu.h>
 #include <n7OS/irq.h>
+#include <stdbool.h>
 
 // Buffer circulaire pour stocker les caractères
 static char keyboard_buffer[BUFFER_SIZE];
 static int buffer_head = 0;
 static int buffer_tail = 0;
+
+// Flag pour indiquer qu'on a reçu un préfixe 0xE0
+static bool ext_scancode = false;
 
 // Table de conversion scancode -> ASCII (QWERTY)
 static const char ascii_table[128] = {
@@ -40,27 +44,72 @@ char scancode_to_ascii(uint8_t scancode) {
 
 void keyboard_interrupt(void) {
     uint8_t status = inb(0x64);
-    
     if (status & 0x01) {
-        uint8_t scancode = inb(KEYBOARD_PORT);
-        char c = scancode_to_ascii(scancode);
-        
-        if (c) {
-            // Calcule la nouvelle position de head
-            int next = (buffer_head + 1) % BUFFER_SIZE;
-            
-            // Vérifie si le buffer n'est pas plein
-            if (next != buffer_tail) {
-                keyboard_buffer[buffer_head] = c;
-                buffer_head = next;
+        uint8_t sc = inb(KEYBOARD_PORT);
+        if (sc == 0xE0) {
+            ext_scancode = true;
+        } else {
+            char c;
+            if (ext_scancode) {
+                c = (char)(sc | 0x80);
+                ext_scancode = false;
+            } else {
+                c = scancode_to_ascii(sc);
+            }
+            if (c) {
+                int next = (buffer_head + 1) % BUFFER_SIZE;
+                if (next != buffer_tail) {
+                    keyboard_buffer[buffer_head] = c;
+                    buffer_head = next;
+                }
             }
         }
     }
-    
-    // Acquittement de l'interruption
     outb(0x20, 0x20);
 }
 
+
+// void keyboard_interrupt(void) {
+//     // Acquittement partiel : lire le status
+//     uint8_t status = inb(0x64);
+
+//     // Vérifier qu'il y a bien un scancode disponible
+//     if (status & 0x01) {
+//         uint8_t sc = inb(KEYBOARD_PORT);
+
+//         char c;
+//         if (sc == 0xE0) {
+//             // Préfixe pour scancodes étendus
+//             ext_scancode = true;
+//             goto done;
+//         }
+
+//         if (ext_scancode) {
+//             // vrai scancode étendu : transmettre brut, bit7=1 pour distinguer
+//             c = (char)(sc | 0x80);
+//             ext_scancode = false;
+//         } else {
+//             // scancode normal → ASCII
+//             c = scancode_to_ascii(sc);
+//         }
+
+//         // Si on a un caractère valide (0 si pas imprimable et pas étendu)
+//         if (c) {
+//             int next = (buffer_head + 1) % BUFFER_SIZE;
+//             if (next != buffer_tail) {
+//                 keyboard_buffer[buffer_head] = c;
+//                 buffer_head = next;
+//             }
+//         }
+//     }
+
+// done:
+//     // Acquitter l'interruption au PIC
+//     outb(0x20, 0x20);
+// }
+
+
+// Lecture bloquonte
 char kgetch(void) {
     char c;
     

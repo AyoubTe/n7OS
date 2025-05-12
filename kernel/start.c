@@ -20,7 +20,7 @@ extern void shell_loop(void);
 
 void kernel_start(void)
 {
-    // 1. Initialisation du processeur
+    // 1. Initialisations
     init_kheap();
     init_pic();
     init_processus();

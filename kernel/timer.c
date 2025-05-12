@@ -192,3 +192,19 @@ void display_uptime_animated() {
         console_putchar_at_attr(0, start_col + i, time_str[i], color);
     }
 }
+
+// ################################### RANDOM ################
+// Génération aléatoire
+static uint32_t lcg_seed = 1;
+
+// Initialise le générateur
+void srand(uint32_t seed) {
+    lcg_seed = seed;
+}
+
+// Retourne un pseudo-aléatoire [0, RAND_MAX]
+int rand(void) {
+    // Paramètres glibc-like
+    lcg_seed = lcg_seed * 1103515245 + 12345;
+    return (int)((lcg_seed >> 16) & 0x7FFF);
+}

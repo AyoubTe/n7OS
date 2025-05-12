@@ -36,3 +36,13 @@ pid_t creer(const char *processName, void (*function)()) {
 
     return pid;
 }
+
+
+///
+switch (c) {
+    case 0x1D: /* gauche */  dx=-1; dy=0; break;
+    case 0x1C: /* bas */     dx=0; dy=1; break;
+    case 0x1B: /* droite */  dx=1; dy=0; break;
+    case 0x1A: /* haut */    dx=0; dy=-1; break;
+    case 'q': case 'Q':      alive=false; break;
+}

@@ -8,6 +8,7 @@
         "irq.h": "c",
         "type_traits": "c",
         "syscall_defs.h": "c",
-        "processor_structs.h": "c"
+        "processor_structs.h": "c",
+        "inttypes.h": "c"
     }
 }

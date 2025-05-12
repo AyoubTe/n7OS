@@ -63,9 +63,6 @@ void init_console() {
 
     init_timer();
 
-    // Initialiser l'affichage de l'heure (à droite)
-    //display_uptime();
-
     update_cursor(2, 0);
 }
 
@@ -204,6 +201,23 @@ void console_putbytes(const char *s, int len) {
 }
 
 
+/**
+ * @brief a character to the console at a specific row and column.
+ *
+ * This function calculates the appropriate position in video memory using 
+ * the formula: pos = row * VGA_WIDTH + col. It then writes the provided 
+ * character, combined with a pre-defined color (CHAR_COLOR), directly into 
+ * the video memory at that position.
+ *
+ * Parameters:
+ *   @param row - The row index (0-indexed) where the character should be displayed.
+ *   @param col - The column index (0-indexed) where the character should be displayed.
+ *   @param c   - The character to display at the specified position.
+ *
+ * Note:
+ *   - The video memory starts at the address defined by SCREEN_ADDR.
+ *   - VGA_WIDTH specifies the width of the display in characters.
+ */
 void console_putchar_at(uint8_t row, uint8_t col, char c) {
     uint16_t *screen = (uint16_t*) SCREEN_ADDR;
     uint16_t pos = row * VGA_WIDTH + col;
@@ -211,7 +225,7 @@ void console_putchar_at(uint8_t row, uint8_t col, char c) {
 }
 
 
-// Les améliorartions
+// #################### Les améliorartions ############################
 /**
  * @brief Met un caractère coloré à l’écran.
  * @param row Ligne (0-index).
