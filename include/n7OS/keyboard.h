@@ -8,20 +8,19 @@
 #define BUFFER_SIZE      256     // Taille du buffer circulaire
 
 // Initialisation du clavier
-void init_keyboard(void);
+void init_keyboard();
 
 // Lecture d'un caractère (bloquant)
-char kgetch(void);
+char kgetch();
 
 // Lecture non bloquante
-int kgetch_nb(void);
+int kgetch_nb();
 
 // Conversion scancode vers ASCII
 char scancode_to_ascii(uint8_t scancode);
 
-extern void keyboard_handler(void);
+extern void keyboard_handler();
 
-extern void keyboard_interrupt(void);
-
+extern void keyboard_interrupt();
 
 #endif

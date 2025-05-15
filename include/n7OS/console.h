@@ -31,8 +31,6 @@
 #define L_PURPLE 0xD
 #define YELLOW  0xE
 #define WHITE   0xF
-
-// Character color: blink|back|text
 #define BLINK   (0<<7)
 #define BACK    (BLACK<<4)
 #define TEXT    WHITE 
@@ -44,15 +42,12 @@ void update_cursor(size_t x, size_t y);
 
 void console_putchar(const char c);
 
-/*
- * This is the function called by printf to send its output to the screen. You
- * have to implement it in the kernel and in the user program.
- */
 void console_putbytes(const char *s, int len);
-
 
 void console_putchar_at(uint8_t row, uint8_t col, char c);
 
 void console_putchar_at_attr(uint8_t row, uint8_t col, char c, uint8_t attr);
+
+void display_os_name();
 
 #endif

@@ -12,7 +12,7 @@ static PageDir directory;
  *        un mapping identité pour la zone du noyau et en activant la pagination.
  */
 PageDir initialise_paging() {
-    int i, j;
+    int i;
 
     /* Allocation du répertoire de pages (1024 entrées) avec alignement sur page */
     directory = (PageDir) kmalloc_a(1024 * sizeof(PDE));
@@ -20,21 +20,15 @@ PageDir initialise_paging() {
         directory[i].value = 0;
     }
 
-    /* Création et initialisation des tables de pages pour un mapping identité.
-       Ici, on mappe les 4 Mo inférieurs, ce qui correspond à 1024 tables
-       de pages (chaque table contient 1024 entrées de 4 Ko). */
-    for (i = 0; i < 1024; i++) {
-        PageTable pgtab = (PageTable) kmalloc_a(1024 * sizeof(PTE));
-        for (j = 0; j < 1024; j++) {
-            /* On assigne l'adresse physique correspondant à l'entrée et on
-               active la page en lecture/écriture (pour le noyau, PAGE_USER non défini) */
-            pgtab[j].value = ((i * 1024 + j) * PAGE_SIZE) | PAGE_PRESENT | PAGE_RW;
-        }
-        /* L'entrée du répertoire de pages pointe vers la table nouvellement créée */
-        directory[i].value = ((uint32_t)pgtab & 0xFFFFF000) | PAGE_PRESENT | PAGE_RW;
+    /* 2) Faire un mapping identité des 16 Mo inférieurs
+        Chaque adresse de 0x00000000 jusqu’à 0XFFFFFF
+        est mappée sur elle-même, page par page.*/
+    for (uint32_t addr = 0; addr < LAST_MEMORY_INDEX; addr += PAGE_SIZE) {
+        // alloc_page_entry créera la table si nécessaire
+        alloc_page_entry(addr,
+                         /* is_writeable */ 1,
+                         /* is_kernel    */ 1);
     }
-
-    // register_interrupt_handler(14, handler_page_fault);
 
     /* Charger le répertoire de pages et activer la pagination */
     loadPageDirectory((unsigned int*) directory);
@@ -42,7 +36,6 @@ PageDir initialise_paging() {
 
     /* Retourner le répertoire de tables de pages */
     return directory;
-
 }
 
 /**
@@ -90,6 +83,7 @@ PageTable alloc_page_entry(uint32_t address, int is_writeable, int is_kernel) {
     return pgtab;
 }
 
+// Set l'entrée en la table de page
 void setPageEntry(PTE *page_table_entry, uint32_t new_page, int is_writeable, int is_kernel) {
     page_table_entry->page_entry.present= 1;
     page_table_entry->page_entry.accessed= 0;
@@ -122,7 +116,7 @@ void enablePaging() {
     );
 }
 
-
+// Handle du defaut de page
 void handler_page_fault(registers_t reg) {
     uint32_t faulting_address;
     __asm__ __volatile__("mov %%cr2, %0" : "=r" (faulting_address));

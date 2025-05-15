@@ -130,65 +130,61 @@ static bool move_snake(void) {
     return true;
 }
 
-// Boucle principale du jeu Snake
+
 void snake_loop(void) {
-    // 0. Efface tout l’écran
     console_putbytes("\f", 1);
 
-    // 1. Initialisation
     init_random_seed();
     length = INIT_LEN;
     dx = 1; dy = 0;
     alive = true;
     lives = 3;
 
-    // 2. UI & terrain
     clear_game_area();
     draw_border();
     draw_lives();
     place_food();
 
-    // 3. Position initiale du serpent
     for (int i = 0; i < length; i++) {
         snake[i].x = GAME_LEFT + GAME_WIDTH / 2 - i;
         snake[i].y = GAME_BOTTOM - 1;
         console_putchar_at_attr(snake[i].y, snake[i].x, 'O', C_RED_FG);
     }
 
-    // 4. Prompt centré en bas
     const char *msg = "Snake: flèches pour diriger, Q pour quitter.";
     int col = (W - strlen(msg)) / 2;
     update_cursor(col, H - 1);
     printf("%s", msg);
 
-    // 5. Contrôle du timing
     uint32_t last_tick = ticks;
 
-    // 6. Boucle de jeu
     while (alive) {
         int c = kgetch_nb();
-        // // Gestion du préfixe flèche 0xE0
-        // if (c == (char)0xE0) {
-        //     c = kgetch_nb();
-        // }
-
-        if(c =='Q' || c == 'q') alive = false;
-
-        if (!alive) break;
-
-        switch (c) {
-            case 'g': dx = -1; dy =  0; break; // ←
-            case 'b': dx =  0; dy =  1; break; // ↓
-            case 'd': dx =  1; dy =  0; break; // →
-            case 'h': dx =  0; dy = -1; break; // ↑
-            //default: break;
+        if (c == (char)0xE0) {
+            c = kgetch_nb();  // lire la vraie flèche
         }
+
+        if (c == 'q' || c == 'Q') {
+            alive = false;
+            break;
+        }
+
+        uint8_t sc = c & 0x7F;
+
+        // Empêche le demi-tour immédiat
+        if (sc == 0x4B && dx != 1) { dx = -1; dy = 0; } // ←
+        if (sc == 0x4D && dx != -1) { dx = 1; dy = 0; } // →
+        if (sc == 0x48 && dy != 1) { dx = 0; dy = -1; } // ↑
+        if (sc == 0x50 && dy != -1) { dx = 0; dy = 1; } // ↓
 
         if (!move_snake()) {
             lives--;
             draw_lives();
-            if (lives == 0) { alive = false; break; }
-            // Recentrer après perte de vie
+            if (lives == 0) {
+                alive = false;
+                break;
+            }
+            // repositionner tête après collision
             snake[0].x = GAME_LEFT + GAME_WIDTH / 2;
             snake[0].y = GAME_BOTTOM - 1;
             dx = 1; dy = 0;
@@ -196,19 +192,16 @@ void snake_loop(void) {
 
         draw_snake();
 
-        // Attendre DELAY_TICKS avant la prochaine boucle
         while ((ticks - last_tick) < DELAY_TICKS) {
             schedule();
         }
         last_tick = ticks;
     }
 
-    // 7. Fin de partie
     update_cursor(0, H - 1);
     printf("\nGame Over! Score: %d\n", length - INIT_LEN);
     printf("Rejouer ? (O/N) ");
 
-    // 8. Boucle de confirmation sans récursion profonde
     char choice;
     do {
         choice = kgetch_nb();
@@ -217,15 +210,14 @@ void snake_loop(void) {
             continue;
         }
         console_putchar(choice);
-    } while (choice!='O' && choice!='o' && choice!='N' && choice!='n');
+    } while (choice != 'O' && choice != 'o' && choice != 'N' && choice != 'n');
 
-    if (choice=='O' || choice=='o') {
+    if (choice == 'O' || choice == 'o') {
         console_putbytes("\f", 1);
         snake_loop();
         return;
     }
 
-    // 9. Retour au shell
     console_putbytes("\f", 1);
     exit_p();
 }

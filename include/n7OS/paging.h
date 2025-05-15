@@ -98,5 +98,6 @@ typedef struct {
     uint32_t eip, cs, eflags, useresp, ss;           // Poussés par le processeur automatiquement
 } registers_t;
 
-//void handler_page_fault(registers_t reg);
+void handler_page_fault(registers_t reg);
+
 #endif

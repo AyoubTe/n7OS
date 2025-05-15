@@ -52,11 +52,9 @@ void init_console() {
             scr_tab[y * VGA_WIDTH + x] = (0x0F << 8) | ' ';
         }
     }
+
     // Afficher le nom de l'OS sur la première ligne (à gauche)
-    const char *os_name = "n7OS";
-    for (int i = 0; os_name[i] != '\0'; i++) {
-        console_putchar_at(0, i, os_name[i]); // Fonction personnalisée
-    }
+    display_os_name ();
 
     printf("\n");
     printf("\n");
@@ -109,6 +107,7 @@ void scroll_screen() {
             scr_tab[(VGA_HEIGHT - 1) * VGA_WIDTH + x] = (0x0F << 8) | ' ';
         }
 
+        // On met le cursur dans la derbière ligne.
         cursor_y = VGA_HEIGHT - 1;
         cursor_x = 0;
     }
@@ -158,12 +157,14 @@ void console_putchar(char c) {
             cursor_x = 0;
             cursor_y++;
         }
+
     } else if (c == '\f') {  // Effacer l'écran
         for (size_t y = 2; y < VGA_HEIGHT; y++) {
             for (size_t x = 0; x < VGA_WIDTH; x++) {
                 scr_tab[y * VGA_WIDTH + x] = (0x0F << 8) | ' ';
             }
         }
+
         // On place le curseur au début de la 3ème ligne (row=2, col=0)
         cursor_x = 0;
         cursor_y = 2;
@@ -178,6 +179,7 @@ void console_putchar(char c) {
         cursor_x = 0;
         cursor_y++;
     }
+
     if (cursor_y >= VGA_HEIGHT) {
         cursor_y = VGA_HEIGHT - 1;
     }
@@ -226,6 +228,7 @@ void console_putchar_at(uint8_t row, uint8_t col, char c) {
 
 
 // #################### Les améliorartions ############################
+
 /**
  * @brief Met un caractère coloré à l’écran.
  * @param row Ligne (0-index).
@@ -237,4 +240,13 @@ void console_putchar_at_attr(uint8_t row, uint8_t col, char c, uint8_t attr) {
     uint16_t *screen = (uint16_t*) SCREEN_ADDR;
     uint16_t pos = row * VGA_WIDTH + col;
     screen[pos] = (attr << 8) | c;
+}
+
+
+// Afficher le nom de l'OS sur la première ligne (à gauche)
+void display_os_name () {
+    const char *os_name = "N7 OS";
+    for (int i = 0; os_name[i] != '\0'; i++) {
+        console_putchar_at(0, i, os_name[i]); // Fonction personnalisée
+    }
 }

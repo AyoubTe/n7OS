@@ -45,7 +45,7 @@ pid_t creer_p(const char *name, void (*function)()) {
     pid_t pid = -1;
 
     // Trouver un PID libre
-    // 1) trouver un slot libre
+    // 0) trouver un slot libre
     for (uint32_t i = 0; i < MAX_PROCESS; i++) {
         if (process_table[i].state == TERMINE) {
             pid = i;
@@ -58,6 +58,19 @@ pid_t creer_p(const char *name, void (*function)()) {
         return -1;
     }
 
+    // 1) Initialisation des liens parent‑enfant
+    pid_t pere = getpid_p();         // le père est le courant
+    process_table[pid].parent = pere;
+    process_table[pid].n_children = 0;
+    for (int i = 0; i < MAX_CHILDREN; i++)
+        process_table[pid].children[i] = (pid_t)-1;
+
+    // Ajouter “pid” comme enfant de “pere”
+    if ((int)pere >= 0 && process_table[pere].n_children < MAX_CHILDREN) {
+        int idx = process_table[pere].n_children++;
+        process_table[pere].children[idx] = pid;
+    }
+
     // Initialiser le processus
     // 2) init méta
     process_table[pid].pid = pid;
@@ -68,7 +81,7 @@ pid_t creer_p(const char *name, void (*function)()) {
 
     // 3) préparer la pile
     uint32_t *stack = process_table[pid].stack;
-    // en sommet, mettez l'adresse de la fonction (ret simulé)
+    // en sommet on met l'adresse de la fonction
     stack[STACK_SIZE - 1] = (uint32_t)function;
 
     // 4) contexte initial tous les regs à 0 : regs = { ebx=0, esp=&stack[top], ebp=0, esi=0, edi=0 }
@@ -79,13 +92,11 @@ pid_t creer_p(const char *name, void (*function)()) {
     // regs[1] <=> ESP doit pointer sur *stack[top] (pointer ESP sur ce sommet)
     process_table[pid].regs[1] = (uint32_t)&stack[STACK_SIZE - 1];
 
-
     // 5) en mettre en file des prêts
     addProcess(pid);
 
     return pid;
 }
-
 
 /**
  * activer_p - Activate or resume a suspended process.
@@ -348,6 +359,32 @@ pid_t fork_p(const char *name, void (*fun)()){
  */
 int exit_p(){
     pid_t pid = getpid_p(); // PID du processus en cours
+    pid_t pere = process_table[pid].parent; // PID du processus père
+
+    // Retirer “pid” de la liste des enfants de “pere”
+    for (int i = 0; i < process_table[pere].n_children; i++) {
+        if (process_table[pere].children[i] == pid) {
+            // décaler le tableau pour combler le trou
+            for (int j = i; j + 1 < process_table[pere].n_children; j++) {
+                process_table[pere].children[j] = process_table[pere].children[j+1];
+            }
+            process_table[pere].n_children--;
+            process_table[pere].children[process_table[pere].n_children] = (pid_t)-1;
+            break;
+        }
+    }
+
+    // On prendre en charge les orphelins : parent = 0
+    for (int i = 0; i < process_table[pid].n_children; i++) {
+        pid_t orphan = process_table[pid].children[i];
+        process_table[orphan].parent = 0;  // ou tout autre PID “init”
+        // ajouter orphan dans children[] de 0
+        if (process_table[0].n_children < MAX_CHILDREN) {
+            int idx = process_table[0].n_children++;
+            process_table[0].children[idx] = orphan;
+        }
+    }
+
     process_table[pid].state = TERMINE; // Marquer le processus comme terminé
     process_table[pid].priority = 0;
     removeProcess(pid); // Retirer de la file des prêts

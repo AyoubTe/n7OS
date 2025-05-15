@@ -11,6 +11,7 @@
 #define MAX_PROCESS 156 // Nombre maximal de processus
 #define STACK_SIZE 1024  // Taille de la pile d'exécution d'une fonction (exemple : 1 page)
 #define MAX_RESOURCE_QUEUE 500 // Nombre maximal de processus en attente d'un ressource
+#define MAX_CHILDREN 20 // Nombre maximal des enfants d'un processsus
 
 // Identifiants de processus et de ressources
 typedef uint32_t pid_t;
@@ -25,6 +26,9 @@ typedef enum {
 struct Process_t {
     const char *name;               // Nom du programme (Processus)
     pid_t pid;                // Identifiant unique
+    pid_t parent;                // PID du processus parent
+    pid_t children[MAX_CHILDREN]; // Liste des PID enfants
+    int n_children;            // Nombre d’enfants actuels
     PROCESS_STATE state;      // État du processus
     uint32_t priority;        // Priorité
     uint32_t stack[STACK_SIZE]; // Pile d'exécution

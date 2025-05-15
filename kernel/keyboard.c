@@ -42,7 +42,7 @@ char scancode_to_ascii(uint8_t scancode) {
     return 0;
 }
 
-void keyboard_interrupt(void) {
+void keyboard_interrupt() {
     uint8_t status = inb(0x64);
     if (status & 0x01) {
         uint8_t sc = inb(KEYBOARD_PORT);
@@ -67,47 +67,6 @@ void keyboard_interrupt(void) {
     }
     outb(0x20, 0x20);
 }
-
-
-// void keyboard_interrupt(void) {
-//     // Acquittement partiel : lire le status
-//     uint8_t status = inb(0x64);
-
-//     // Vérifier qu'il y a bien un scancode disponible
-//     if (status & 0x01) {
-//         uint8_t sc = inb(KEYBOARD_PORT);
-
-//         char c;
-//         if (sc == 0xE0) {
-//             // Préfixe pour scancodes étendus
-//             ext_scancode = true;
-//             goto done;
-//         }
-
-//         if (ext_scancode) {
-//             // vrai scancode étendu : transmettre brut, bit7=1 pour distinguer
-//             c = (char)(sc | 0x80);
-//             ext_scancode = false;
-//         } else {
-//             // scancode normal → ASCII
-//             c = scancode_to_ascii(sc);
-//         }
-
-//         // Si on a un caractère valide (0 si pas imprimable et pas étendu)
-//         if (c) {
-//             int next = (buffer_head + 1) % BUFFER_SIZE;
-//             if (next != buffer_tail) {
-//                 keyboard_buffer[buffer_head] = c;
-//                 buffer_head = next;
-//             }
-//         }
-//     }
-
-// done:
-//     // Acquitter l'interruption au PIC
-//     outb(0x20, 0x20);
-// }
-
 
 // Lecture bloquonte
 char kgetch(void) {

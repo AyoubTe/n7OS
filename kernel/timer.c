@@ -40,21 +40,15 @@ void timer_handler_c() {
     // Acquittement de l'interruption auprès du PIC
     outb(0x20, 0x20);
 
-    // Rafraîchir la date qu’une fois par minute
-    // static uint8_t last_min = 255;
-    // uint8_t h, m, s;
-    // ticks_to_time(ticks, &h, &m, &s);
-    // if (m != last_min) {
-    //     display_date();
-    //     last_min = m;
-    // }
-
     // Affichage de la date
     display_date();
 
     // Affichage du temps
-    //display_uptime();
+    // display_uptime();
     display_uptime_animated();
+
+    // Reaffichage du nom d'OS
+    display_os_name ();
 
     // Appel de l'ordonnanceur pour passer à un autre processus
     if(ticks%20 == 0) { // Appel de shedule chaque 20 tops d'horloge
@@ -82,7 +76,6 @@ static uint8_t cmos_read(uint8_t reg) {
     return val;
 }
 
-
 static uint8_t bcd_to_bin(uint8_t bcd) {
     return ((bcd >> 4) * 10) + (bcd & 0x0F);
 }
@@ -99,6 +92,7 @@ bool rtc_get_datetime(rtc_time_t *dt) {
     return true;
 }
 
+// Affichage de la date du jour
 void display_date() {
     rtc_time_t now;
     if (!rtc_get_datetime(&now)) return;
@@ -120,7 +114,7 @@ void display_uptime() {
     uint8_t hours, minutes, seconds;
     ticks_to_time(ticks, &hours, &minutes, &seconds);
     
-    // Positionner l'heure en haut à droite (colonne 66 sur 80)
+    // Positionner l'heure en haut à droite
     char time_str[12];
     snprintf(time_str, sizeof(time_str), " %02u:%02u:%02u ", hours, minutes, seconds);
     
@@ -131,69 +125,28 @@ void display_uptime() {
     }
 }
 
-
-
-// Améloirations
-/*
-
-// Par exemple pour l’heure :
-for (int i = 0; i < (int)strlen(time_str); i++) {
-    console_putchar_at_attr(0, start_col + i, time_str[i], 0x1E);
-}
-
-// Et pour la date en gris clair sur fond magenta :
-for (int i = 0; i < (int)strlen(date_str); i++) {
-    console_putchar_at_attr(0, start_col_date + i, date_str[i], 0x8D);
-}
-
-*/
-
-
-void display_uptime_boxed() {
-    char buf[20];
-    uint8_t h, m, s;
-    ticks_to_time(ticks, &h, &m, &s);
-    snprintf(buf, sizeof(buf), " %02u:%02u:%02u ", h, m, s);
-    int start = VGA_WIDTH - strlen(buf) - 2;
-
-    // Coins et traits : ┌─┐ et │ │ et └─┘ (codes CP437 0xC9,0xCD,0xBB,0xBA,0xC8,0xBC)
-    console_putchar_at_attr(0, start,   0xC9, 0x2F);         // ┌
-    for (int i = 0; i < (int)strlen(buf); i++)
-        console_putchar_at_attr(0, start+1+i, 0xCD, 0x2F);    // ─
-    console_putchar_at_attr(0, start+1+strlen(buf), 0xBB, 0x2F); // ┐
-
-    console_putchar_at_attr(1, start,   0xBA, 0x2F);         // │
-    for (int i = 0; i < (int)strlen(buf); i++)
-        console_putchar_at_attr(1, start+1+i, buf[i], 0x2F);  // texte
-    console_putchar_at_attr(1, start+1+strlen(buf), 0xBA, 0x2F);// │
-
-    console_putchar_at_attr(2, start,   0xC8, 0x2F);         // └
-    for (int i = 0; i < (int)strlen(buf); i++)
-        console_putchar_at_attr(2, start+1+i, 0xCD, 0x2F);    // ─
-    console_putchar_at_attr(2, start+1+strlen(buf), 0xBC, 0x2F);// ┘
-}
-
 // Affichage animé pour l'heure en changant la couleur selon l'heure
 void display_uptime_animated() {
     uint8_t color = (ticks / TIMER_FREQUENCY) % 2
                     ? 0xE1  // jaune sur bleu
                     : 0x2F; // vert sur bleu
-    // même principe que display_uptime, mais en passant ‘color’ à console_putchar_at_attr
+
+    // Même principe que display_uptime
     uint8_t hours, minutes, seconds;
     ticks_to_time(ticks, &hours, &minutes, &seconds);
     
-    // Positionner l'heure en haut à droite (colonne 66 sur 80)
+    // On ositionnne l'heure en haut à droite
     char time_str[12];
     snprintf(time_str, sizeof(time_str), " %02u:%02u:%02u ", hours, minutes, seconds);
     
-    // Écrire chaque caractère à sa position
+    // Écriture du chaque caractère à sa position
     int start_col = VGA_WIDTH - strlen(time_str);
     for (int i = 0; i < (int)strlen(time_str); i++) {
         console_putchar_at_attr(0, start_col + i, time_str[i], color);
     }
 }
 
-// ################################### RANDOM ################
+// ################################### RANDOM ###############################
 // Génération aléatoire
 static uint32_t lcg_seed = 1;
 

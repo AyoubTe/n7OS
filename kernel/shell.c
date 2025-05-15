@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #define MAX_LINE 80
+#define HISTORY_SIZE 10
 
 extern void runner_loop(void);
 extern void snake_loop(void);
@@ -27,7 +28,7 @@ int lance_runner() {
     return 0;
 }
 
-
+// La fonction qui lance le runner
 int lance_snake(void) {
     pid_t pid = creer_p("snake", snake_loop);
     if ((int)pid < 0) {
@@ -44,8 +45,6 @@ int lance_snake(void) {
 // } apps[] = {
 //     { "runner", lance_runner },
 //     { "snake",  lance_snake  },
-//     //{ "autre_app",     lance_autre_app },
-//     // ajoute ici d'autres apps...
 //     { NULL, NULL}
 // };
 
@@ -54,53 +53,87 @@ void shell_loop() {
     char line[MAX_LINE+1];
     int len = 0;
 
-    printf("\n$ ");                   // invite
+    // Historique
+    char history[HISTORY_SIZE][MAX_LINE+1] = {0};
+    int history_index = 0;
+
+    printf("\n$ ");
     while (1) {
         int c = kgetch_nb();
         if (c < 0) {
-            // rien à lire : on céde le CPU au timer / noyau
             schedule();
             continue;
         }
-        // Écho et gestion des touches spéciales
+        
+        if (c == (char)0xE0) {
+            // Scancode étendu, lire suivant
+            c = kgetch_nb();
+
+            uint8_t sc = c & 0x7F;
+
+            if (sc == 0x48) { // flèche ↑ 0x48
+                if (history_index > 0) {
+                    history_index--;
+                    // Effacer ligne actuelle
+                    while (len > 0) {
+                        console_putchar('\b');
+                        len--;
+                    }
+                    // Charger la dernière commande
+                    strcpy(line, history[history_index]);
+                    printf("%s", line);
+                    len = strlen(line);
+                }
+                continue;
+            }
+        }
+
         if (c == '\r' || c == '\n') {
             line[len] = '\0';
             console_putchar('\n');
+
+            // Sauvegarde dans l’historique
+            if (len > 0 && (history_index == 0 || strcmp(line, history[history_index - 1]) != 0)) {
+                if (history_index < HISTORY_SIZE) {
+                    strcpy(history[history_index++], line);
+                }
+            }
+
             if (len > 0) {
-                // simple parsing
                 char *cmd = strtok(line, " ");
                 char *arg = strtok(NULL, " ");
+
                 if (strcmp(cmd, "help") == 0) {
-                    printf("help: liste des commandes\n");
-                    printf("clear: efface lcl'ecran\n");
-                    printf("run <nom app>: lance l'app\n");
-                    printf("poweroff: arrete le systeme\n");
+                    printf("Commandes disponibles:\n");
+                    printf("  help       : liste des commandes\n");
+                    printf("  clear      : efface l’écran\n");
+                    printf("  run <app>  : lance une application\n");
+                    printf("  apps       : liste les apps disponibles\n");
+                    printf("  poweroff   : éteint le système\n");
 
                 } else if (strcmp(cmd, "clear") == 0) {
                     console_putbytes("\f", 1);
+
+                } else if (strcmp(cmd, "apps") == 0) {
+                    printf("Applications disponibles:\n");
+                    printf("  - snake       : jeu du serpant\n");
+                    printf("  - runner      : jeu de course\n");
 
                 } else if (strcmp(cmd, "run") == 0) {
                     if (!arg) {
                         printf("Usage : run <nom_app>\n");
                     } else {
-                        // // trim espaces et retours chariot
-                        // char *p = arg + strlen(arg) - 1;
-                        // while (p >= arg && (*p==' '||*p=='\r'||*p=='\n')) *p-- = '\0';
-
-                        // // cherche l'app dans la table
                         // int found = 0;
                         // for (int i = 0; apps[i].name; i++) {
-                        //     printf("  [DBG] comparing '%s' to '%s'\n", arg, apps[i].name);
-                        //     if (!strcmp(arg, apps[i].name)) {
+                        //     if (strcmp(arg, apps[i].name) == 0) {
                         //         apps[i].fn();
                         //         found = 1;
                         //         break;
                         //     }
                         // }
                         // if (!found) {
-                        //     printf("App inconnue: '%s'\n", arg);
+                        //     printf("App inconnue: %s\n", arg);
                         // }
-
                         if (strcmp(arg, "runner") == 0) {
                             lance_runner();
                         }
@@ -111,21 +144,17 @@ void shell_loop() {
                             printf("App inconnue: %s\n", arg);
                         }
                     }
-                    // lance_runner();
-                    // console_putchar('\n');
 
                 } else if (strcmp(cmd, "poweroff") == 0) {
                     shutdown(1);
-                    console_putchar('\n');
 
                 } else {
                     printf("Commande inconnue: %s\n", cmd);
                 }
             }
-            // reset
+
             len = 0;
             printf("$ ");
-
         }
         else if (c == '\b' && len > 0) {
             len--;
@@ -138,4 +167,3 @@ void shell_loop() {
         }
     }
 }
-
