@@ -25,7 +25,7 @@ int sys_shutdown(int n);
 
 int sys_write(const char *s, int len);
 
-int sys_fork(const char *name, void (*fun)());
+int sys_fork();
 
 int sys_exit();
 

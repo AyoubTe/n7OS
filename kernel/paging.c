@@ -83,6 +83,28 @@ PageTable alloc_page_entry(uint32_t address, int is_writeable, int is_kernel) {
     return pgtab;
 }
 
+/**
+ * setPageEntry - Configure a single page table entry.
+ *
+ * This function initializes a page table entry with the specified physical page address
+ * and permission settings. It marks the entry as present and configures the "accessed",
+ * "dirty", "read/write" and "user/kernel" attributes.
+ *
+ * @param page_table_entry Pointer to the page table entry to be configured.
+ * @param new_page         The physical address of the new page; the actual frame number
+ *                         is obtained by shifting this address right by 12 bits.
+ * @param is_writeable     Flag indicating if the page should be writable (non-zero means writable).
+ * @param is_kernel        Flag indicating if the page belongs to kernel space (non-zero means kernel,
+ *                         which results in the user flag being set to 0).
+ *
+ * The function sets the following fields:
+ *   - present: 1 (indicating the page is present)
+ *   - accessed: 0 (initializing the access flag)
+ *   - dirty: 0 (initializing the dirty flag)
+ *   - rw: according to is_writeable, for read/write permission
+ *   - user: inverse of is_kernel (0 for kernel pages, 1 for user pages)
+ *   - page: the frame number derived from new_page (new_page >> 12)
+ */
 // Set l'entrée en la table de page
 void setPageEntry(PTE *page_table_entry, uint32_t new_page, int is_writeable, int is_kernel) {
     page_table_entry->page_entry.present= 1;
@@ -116,6 +138,30 @@ void enablePaging() {
     );
 }
 
+
+/**
+ * @brief Handles a page fault exception.
+ *
+ * This function is invoked when a page fault occurs. It retrieves
+ * the faulting address from the CR2 register using inline assembly
+ * and decodes the error code stored in the provided registers_t structure.
+ *
+ * The error code is examined to determine specific details about the fault:
+ * - Bit 0: Indicates if the fault was due to a page not being present.
+ * - Bit 1: Indicates if the fault was triggered by an attempted write (read-only violation).
+ * - Bit 2: Indicates if the fault occurred in user mode.
+ * - Bit 3: Indicates if reserved bits were overwritten.
+ * - Bit 4: Indicates if the fault occurred during an instruction fetch.
+ *
+ * The function prints diagnostic information about the fault, including
+ * the detected fault characteristics and the faulting address.
+ *
+ * @param reg A registers_t structure containing the CPU register state at the time of
+ *            the fault. The field reg.err_code holds the error code with fault specifics.
+ *
+ * @note This function ultimately calls panic("Page fault") to halt the system after logging
+ *       the fault details.
+ */
 // Handle du defaut de page
 void handler_page_fault(registers_t reg) {
     uint32_t faulting_address;

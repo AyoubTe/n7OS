@@ -28,6 +28,19 @@ static const char ascii_table[128] = {
     ' ',  // 0x39 - SPACE
 };
 
+/**
+ * Convertit un scancode en caractère ASCII.
+ *
+ * Cette fonction vérifie si le scancode correspond à une touche enfoncée
+ * ou relâchée. Elle ignore les scancodes de relâchement (lorsque le bit 7 est défini)
+ * et retourne le caractère correspondant en consultant une table de correspondance
+ * (ascii_table). Si le scancode est supérieur ou égal à la taille de la table, la fonction
+ * retourne 0.
+ *
+ * @param scancode Le code du scancode à convertir (valeur non signée de 8 bits).
+ * @return Le caractère ASCII associé au scancode ou 0 si le scancode représente une touche de relâchement
+ *         ou est invalide.
+ */
 char scancode_to_ascii(uint8_t scancode) {
     // Ignore les codes de relâchement de touche
     if (scancode & 0x80) {
@@ -42,6 +55,32 @@ char scancode_to_ascii(uint8_t scancode) {
     return 0;
 }
 
+/**
+ * keyboard_interrupt - Handles keyboard interrupts.
+ *
+ * This function is invoked when a keyboard interrupt occurs. It performs the
+ * following operations:
+ *   1. Reads the keyboard controller status from port 0x64.
+ *   2. If the status indicates that data is available (status & 0x01), it reads the
+ *      scancode from the keyboard port.
+ *   3. Checks if the scancode is 0xE0, which indicates the start of an extended
+ *      scancode sequence. If so, it sets the 'ext_scancode' flag.
+ *   4. If 'ext_scancode' is set, it processes the scancode as an extended key by
+ *      setting its high bit; otherwise, it converts the scancode to an ASCII
+ *      character using the 'scancode_to_ascii' function.
+ *   5. If a valid ASCII character is derived and there is space in the keyboard
+ *      buffer (circular queue managed by 'buffer_head' and 'buffer_tail'), the
+ *      character is stored in the buffer.
+ *   6. Finally, it sends an End Of Interrupt (EOI) signal to the keyboard controller 
+ *      by writing to port 0x20.
+ *
+ * Note: The following globals are used in this function:
+ *   - BUFFER_SIZE: the total size of the keyboard buffer.
+ *   - buffer_head: the index of the next position to write in the keyboard buffer.
+ *   - buffer_tail: the index marking the start of data in the keyboard buffer.
+ *   - keyboard_buffer: the array that holds the buffered keyboard characters.
+ *   - ext_scancode: a flag indicating that an extended scancode has been partially processed.
+ */
 void keyboard_interrupt() {
     uint8_t status = inb(0x64);
     if (status & 0x01) {
@@ -68,6 +107,18 @@ void keyboard_interrupt() {
     outb(0x20, 0x20);
 }
 
+/**
+ * @brief Lit de manière bloquante un caractère à partir du tampon clavier.
+ *
+ * Cette fonction lit un caractère en désactivant les interruptions pour garantir
+ * une lecture cohérente et sécurisée. Elle attend en boucle tant qu'un caractère
+ * n'est pas disponible dans le buffer, réactivant temporairement les interruptions
+ * et mettant le processeur en veille (hlt) afin de réduire la consommation des ressources.
+ * Une fois un caractère disponible, il est extrait du tampon et les interruptions sont
+ * réactivées avant le retour de la fonction.
+ *
+ * @return char Le caractère lu provenant du tampon clavier.
+ */
 // Lecture bloquonte
 char kgetch(void) {
     char c;
@@ -109,6 +160,16 @@ int kgetch_nb(void) {
 }
 
 
+/**
+ * init_keyboard - Initialise le clavier pour le système.
+ *
+ * Cette fonction effectue les opérations suivantes :
+ * 1. Démasque l'IRQ1 (ligne d'interruption du clavier) en modifiant le registre de masque du PIC.
+ * 2. Installe le gestionnaire d'interruption dédié au clavier via init_irq_entry.
+ * 3. Réinitialise les index de tampon en vidant les buffers de saisie.
+ *
+ * Elle doit être appelée lors de l'initialisation du noyau pour permettre la gestion des entrées clavier.
+ */
 void init_keyboard(void) {
     // Démasque l'IRQ1 (clavier)
     outb(inb(0x21) & ~(1 << 1), 0x21);

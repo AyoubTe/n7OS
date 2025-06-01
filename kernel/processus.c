@@ -1,6 +1,6 @@
 
 //
-// Created by Ayoub SAMI on 03/04/2025.
+// Created by ⴰⵢⵢⵓⴱ ⴰⵙⵙⴰⵎⵉ on 03/04/2025.
 //
 
 #include <n7OS/processus.h>
@@ -9,12 +9,11 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <debug.h>
+#include <string.h>
 
 extern void kernel_start(); // point d'entrée
 
 extern void ctx_sw(uint32_t *old_regs, uint32_t *new_regs);
-
-//extern void shell_loop(void);
 
 /* Déclarations des tableaux et variables nécessaires */
 // Tableau des processus
@@ -344,8 +343,20 @@ int checkResourceQueue(uint32_t rid, pid_t pid) {
  * Returns: The PID of the newly created process on success.
  */
 /* Gestion des appels système */
-pid_t fork_p(const char *name, void (*fun)()){
-    return creer_p(name, fun);
+pid_t fork_p(){
+    pid_t pid = getpid_p();
+
+    struct Process_t pere = process_table[pid];
+    char child_name[100];
+    strcpy(child_name, pere.name);
+
+    strcat(child_name, "_child");  // Concatène _child à la fin du nom du père
+
+    pid_t child_pid = creer_p(child_name, pere.function);
+
+    memcpy(process_table[child_pid].stack, process_table[pid].stack, sizeof(process_table[pid].stack));
+
+    return child_pid;
 }
 
 
@@ -426,8 +437,8 @@ int kill_p(pid_t pid) {
 int sleep_p(int seconds) {
     pid_t pid = getpid_p(); // Récupérer le processus en cours
     bloquer_p(pid); // Bloquer le processus
-    // Simuler une attente en fonction des secondes
-    for (volatile int i = 0; i < (seconds * 1000000); i++); // Boucle occupée simulant un délai (peut être implémenté par un timer)
+    // Simulation une attente en fonction des secondes
+    for (volatile int i = 0; i < (seconds * 1000000); i++); // Boucle occupée simulant un délai
     debloquer_p(pid); // Débloquer le processus une fois le temps écoulé
     return 0;
 }
@@ -452,6 +463,47 @@ int wait_p(pid_t *pid) {
     while ((int)(*pid) != -1 && process_table[*pid].state != TERMINE) {
         bloquer_p(0); // Bloquer tant que le processus enfant s'exécute
     }
+
+    return 0;
+}
+
+
+
+/**
+ * wait_children_p - Wait until all child processes of the current process have terminated.
+ *
+ * This function retrieves the current process's PID and enters a loop that continuously checks if
+ * each child process associated with the current process has reached the TERMINATED state. A busy-wait
+ * delay is used within the loop to provide a simulated delay between checks.
+ *
+ * @return 0 on success once all child processes have terminated; -1 if an error occurs when retrieving
+ *         the current process's PID.
+ *
+ * Note: The busy-wait delay loop should be adjusted for production environments to avoid unnecessary CPU usage.
+ */
+// Cette fonction permet à un processus quelconque d'attendre ses processus fils.
+int wait_children_p() {
+    pid_t current_pid = getpid_p();
+    if ((int)current_pid < 0) {
+        return -1;
+    }
+
+    int permit = 0;
+
+    // Attente que tous les fils soient terminer
+
+    do {
+        permit = 1;
+
+        for (int i = 0;  i < process_table[current_pid].n_children; i++)
+        {
+            if (process_table[process_table[current_pid].children[i]].state != TERMINE){
+                permit = 0;
+            }
+        }
+        
+        for (volatile int i = 0; i < (10 * 1000000); i++); // Boucle occupée simulant un délai
+    } while (permit != 1);
 
     return 0;
 }
@@ -553,6 +605,15 @@ void dummyProcess() {
 }
 
 
+// Le processus vide
+// Normalement on a pas besoin d'un idle process parce que on crée le kernel comme un processus ce dernier il entre en attente lorsque il termine
+void idle() {
+    while (1) {
+        hlt();
+    }
+}
+
+
 /**
  * test_processus - Test the process management routines.
  *
@@ -604,9 +665,4 @@ void init_processus() {
     uint32_t esp;
     __asm__ volatile("mov %%esp, %0" : "=r" (esp));
     process_table[pid].regs[1] = esp;  // regs[1] = esp
-
-    // Créer le shell au démarrage
-    // Shell PID = 1
-    // pid_t shell_pid = creer_p("shell", shell_loop);
-    // process_table[shell_pid].priority = 10;  // priorité plus grand que le kernel
 }

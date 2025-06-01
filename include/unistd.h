@@ -63,12 +63,13 @@ return __res;\
 int example();
 int shutdown(int n);
 int write(const char *s, int len);
-int fork(const char *name, void (*fun)());
+int fork();
 int exit();
 int kill(pid_t pid);
 int get_pid();
 int sleep(int seconds);
 int wait(pid_t *pid);
 int getchar();
+int wait_children();
 
 #endif

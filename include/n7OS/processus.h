@@ -41,7 +41,7 @@ struct Process_t {
 
 void init_processus();
 
-pid_t fork_p(const char *name, void (*fun)());
+pid_t fork_p();
 
 int exit_p();
 
@@ -52,6 +52,8 @@ pid_t getpid_p();
 int sleep_p(int seconds);
 
 int wait_p(pid_t *pid);
+
+int wait_children_p();
 
 
 /* Les fonctions de gestion des processus */

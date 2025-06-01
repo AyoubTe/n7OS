@@ -1,4 +1,8 @@
-// snake.c
+
+//
+// Created by ⴰⵢⵢⵓⴱ ⴰⵙⵙⴰⵎⵉ on 29/04/2025.
+//
+
 #include <n7OS/console.h>
 #include <n7OS/keyboard.h>
 #include <n7OS/processus.h>
@@ -46,6 +50,16 @@ static int   lives;
 // Externe du timer.c
 extern volatile uint32_t ticks;
 
+/**
+ * @brief Initialise la graine du générateur de nombres aléatoires.
+ *
+ * Cette fonction configure la graine utilisée par le générateur de nombres aléatoires
+ * en récupérant l'heure courante via le RTC (CMOS). Elle récupère les secondes, minutes
+ * et heures actuelles pour calculer une valeur de graine, qui est ensuite passée à
+ * srand() afin d'initialiser le générateur.
+ *
+ * @note Aucune valeur n'est retournée par cette fonction.
+ */
 // Initialisation de la graine aléatoire via CMOS
 static void init_random_seed(void) {
     rtc_time_t now;
@@ -54,6 +68,18 @@ static void init_random_seed(void) {
     srand(seed);
 }
 
+/**
+ * @brief Place la nourriture dans le cadre de jeu.
+ *
+ * Cette fonction génère de manière aléatoire une position pour la nourriture,
+ * en veillant à ce qu'elle soit placée à l'intérieur des limites du cadre de
+ * jeu défini par GAME_LEFT, GAME_TOP, GAME_WIDTH et GAME_HEIGHT. La position
+ * calculée est ensuite stockée dans la structure 'food' et affichée sur la console
+ * sous la forme d'un caractère '@' avec l'attribut de couleur C_GREEN_FG.
+ *
+ * @note La fonction utilise rand() pour la génération aléatoire et console_putchar_at_attr()
+ *       pour afficher la nourriture à l'écran.
+ */
 // Place la nourriture en vert à l’intérieur du cadre
 static void place_food(void) {
     food.x = GAME_LEFT + 1 + (rand() % (GAME_WIDTH - 2));
@@ -61,6 +87,27 @@ static void place_food(void) {
     console_putchar_at_attr(food.y, food.x, '@', C_GREEN_FG);
 }
 
+/**
+ * draw_border - Dessine un cadre bleu autour du terrain de jeu.
+ *
+ * Cette fonction trace un contour sur l'interface graphique du jeu en utilisant
+ * des caractères spécifiques à chaque bord. Les bords supérieur et inférieur
+ * sont dessinés avec le caractère '-', tandis que les bords gauche et droit sont
+ * dessinés avec le caractère '|'. Les quatre coins du cadre sont représentés
+ * par le caractère '+'.
+ *
+ * Les attributs de couleur sont définis par la constante C_BLUE_BG pour donner
+ * un fond bleu au cadre.
+ *
+ * Utilise les constantes suivantes pour délimiter le terrain de jeu :
+ *   - GAME_LEFT : position de la colonne de gauche.
+ *   - GAME_RIGHT : position de la colonne de droite.
+ *   - GAME_TOP : position de la ligne supérieure.
+ *   - GAME_BOTTOM : position de la ligne inférieure.
+ *
+ * La fonction utilise la routine console_putchar_at_attr() pour afficher chaque 
+ * caractère à la position donnée avec l'attribut de couleur spécifié.
+ */
 // Dessine un cadre bleu autour du terrain
 static void draw_border(void) {
     for (int x = GAME_LEFT; x <= GAME_RIGHT; x++) {
@@ -77,6 +124,27 @@ static void draw_border(void) {
     console_putchar_at_attr(GAME_BOTTOM, GAME_RIGHT, '+', C_BLUE_BG);
 }
 
+/**
+ * draw_lives - Affiche les vies du joueur sous forme de cœurs rouges.
+ *
+ * Cette fonction affiche les vies du joueur en utilisant des cœurs rouges positionnés
+ * juste au-dessus du cadre de jeu. Pour chaque vie active (jusqu'à 'lives'), elle dessine
+ * un cœur à l'endroit calculé par rapport aux positions GAME_TOP et GAME_LEFT. Si le nombre
+ * de vies est inférieur à MAX_LIVES, les positions restantes sont effacées (remplies d'espaces)
+ * pour s'assurer que les anciens cœurs ne restent pas visibles.
+ *
+ * Variables Globales et Constantes utilisées :
+ *   - lives         : Entier représentant le nombre actuel de vies du joueur.
+ *   - MAX_LIVES     : Nombre maximum de vies possible.
+ *   - GAME_TOP      : Position verticale de référence dans la console pour le dessin.
+ *   - GAME_LEFT     : Position horizontale de référence dans la console pour le dessin.
+ *   - HEART_CODE    : Code du caractère à afficher pour représenter un cœur.
+ *   - C_HEART_ATTR  : Attribut de couleur appliqué au caractère de cœur.
+ *
+ * Remarque :
+ *   Il est important que toutes les variables et constantes utilisées soient correctement
+ *   initialisées avant l'appel à cette fonction pour garantir un comportement correct du dessin.
+ */
 // Affiche les vies en cœurs rouges juste au-dessus du cadre
 static void draw_lives(void) {
     for (int i = 0; i < lives; i++) {
@@ -87,6 +155,14 @@ static void draw_lives(void) {
     }
 }
 
+/**
+ * @brief Efface l'intérieur de la zone de jeu.
+ *
+ * Cette fonction vide la zone intérieure délimitée par le cadre du jeu, 
+ * c'est-à-dire l'espace situé entre GAME_TOP et GAME_BOTTOM ainsi qu'entre
+ * GAME_LEFT et GAME_RIGHT. Chaque cellule de cette zone est remplacée par 
+ * un caractère espace afin de "nettoyer" l'affichage.
+ */
 // Efface l’intérieur du jeu (zone sous le cadre)
 static void clear_game_area(void) {
     for (int y = GAME_TOP + 1; y < GAME_BOTTOM; y++) {
@@ -96,6 +172,18 @@ static void clear_game_area(void) {
     }
 }
 
+/**
+ * Dessine la tête du serpent en rouge et efface l'ancienne position de la queue.
+ *
+ * La fonction récupère la coordonnée de la queue du serpent (position à l'index 'length')
+ * et affiche un caractère espace à cet endroit pour l'effacer de l'affichage.
+ * Ensuite, elle dessine un caractère 'O' en rouge à la position de la tête du serpent
+ * (index 0 dans le tableau 'snake').
+ *
+ * Dépendances :
+ * - Utilise les variables globales 'snake' (tableau de coordonnées) et 'length' (nombre d'éléments).
+ * - Utilise les fonctions 'console_putchar_at' et 'console_putchar_at_attr' pour l'affichage.
+ */
 // Dessine la tête en rouge et efface la queue
 static void draw_snake(void) {
     coord tail = snake[length];
@@ -103,6 +191,22 @@ static void draw_snake(void) {
     console_putchar_at_attr(snake[0].y, snake[0].x, 'O', C_RED_FG);
 }
 
+/**
+ * move_snake - Déplace le serpent et gère les collisions avec le cadre, le corps et la nourriture.
+ *
+ * Cette fonction déplace le serpent en décalant chaque segment vers la position de son prédécesseur,
+ * puis met à jour la position de la tête en ajoutant les valeurs de déplacement dx et dy.
+ * 
+ * Elle vérifie ensuite si la tête du serpent entre en collision avec le cadre du jeu ou avec un segment de son propre corps.
+ * En cas de collision avec le cadre ou le corps, la fonction retourne false, indiquant une fin de partie.
+ *
+ * Si la tête rencontre la nourriture, la longueur du serpent est augmentée (tant que celle-ci n'atteint pas la
+ * valeur maximale définie par MAX_LEN - 1) et une nouvelle position pour la nourriture est générée.
+ *
+ * Retourne:
+ *   true  - si le déplacement s'est effectué sans collision fatale.
+ *   false - si une collision fatale est détectée.
+ */
 // Déplace le serpent, gère collisions et nourriture
 static bool move_snake(void) {
     for (int i = length; i > 0; i--) {

@@ -1,3 +1,9 @@
+//
+// ⵉⵜⵡⵢⴰⵔⴰ ⵔⴷ ⴰⵢⵢⵓⴱ ⴰⵙⵙⴰⵎⵉ ⴳ 29/04/2025.
+//
+
+// ⵛⵉⵍ
+
 #include <n7OS/console.h>
 #include <n7OS/processus.h>
 #include <n7OS/keyboard.h>

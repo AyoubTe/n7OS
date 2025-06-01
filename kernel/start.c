@@ -1,3 +1,4 @@
+
 #include <n7OS/cpu.h>
 #include <n7OS/processor_structs.h>
 #include <n7OS/console.h>
@@ -22,14 +23,15 @@ void kernel_start(void)
 {
     // 1. Initialisations
     init_kheap();
-    init_pic();
-    init_processus();
+    
 
     // 2. Initialisation de la paging
     uint32_t base = (uint32_t)initialise_paging();
     // printf("La pagination est initialisee avec base %x\n", base);
     /* la memoire virtuelle est definie */
     setup_base((int)base);
+
+    init_processus();
 
     // 3. Interruptions
     // Initialisation de l'entrée d'interruption 50

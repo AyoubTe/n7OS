@@ -45,10 +45,9 @@ int sys_example() {
  * or a negative value on failure.
  */
 // Implémentations des appels système de gestion des processus
-int sys_fork(const char *name, void (*fun)()) {
-  return fork_p(name, fun);
+int sys_fork() {
+  return fork_p();
 }
-
 
 /**
  * sys_exit - Terminate the current process.
@@ -163,6 +162,22 @@ int sys_write(const char *s, int len) {
 /* Implémentation de sys_getchar pour la lecture clavier */
 int sys_getchar(void) {
   return kgetch();
+}
+
+
+/**
+ * wait_children - Wait for all child processes to complete.
+ *
+ * This function acts as a wrapper for the internal function wait_children_p().
+ * It is used to suspend execution until all child processes have terminated,
+ * and returns the status from wait_children_p(), which may indicate the success
+ * of the operation or provide an error code.
+ *
+ * Returns:
+ *   An integer status code returned by wait_children_p().
+ */
+int wait_children() {
+  return wait_children_p();
 }
 
 
