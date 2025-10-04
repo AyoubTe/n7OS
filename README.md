@@ -125,18 +125,18 @@ s                  # Step into
 help
 ```
 > This command prints the available commands.
-[help](./images/help.png)
+![help](./images/help.png)
 
 ### Runner Game
 ```shell
 run runner
 ```
 > This command starts the runner game.
-[runner](./images/runner.png)
+![runner](./images/runner.png)
 
 ### Snake Game
 ```shell
 run snake
 ```
 > This command starts the snake game.
-[snake](./images/snake.png)
+![snake](./images/snake.png)
