@@ -1,5 +1,5 @@
 # Projet développement d'un mini système d'exploitation pour PC x86
-
+![n7OS](https://samiayoub.tech/assets/n7OS-BuD45rhf.png)
 ## Objectifs
 
 Développer les éléments de base d'un système d'exploitation
