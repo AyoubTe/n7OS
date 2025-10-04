@@ -1,106 +1,142 @@
-# Projet développement d'un mini système d'exploitation pour PC x86
-![n7OS](https://samiayoub.tech/assets/n7OS-BuD45rhf.png)
-## Objectifs
+# Mini Operating System for x86 PCs
 
-Développer les éléments de base d'un système d'exploitation
+![n7OS](./images/n7OS.png)
 
-Ce que nous verrons :
+## Overview
 
-- Gestion d'entrées/sorties de base : le clavier et l'écran
-- Gestion des interruptions
-- Gestion des processus
-- Gestion de la mémoire virtuelle pour les processus
+This project consists of developing a mini operating system (n7OS) for x86 PCs, written in C and assembly.  
+The goal is to understand and implement the core mechanisms of an operating system from scratch.
 
-Ce que nous ne verrons pas :
+## Objectives
 
-- Gestion des fichiers
-- Partage de ressources et communication entre processus
-  
-## Organisation
+### What we will cover
+- Basic I/O management (keyboard and screen)
+- Interrupt handling
+- Process management
+- Virtual memory management for processes
 
-- 14 séances encadrées
-- Pas de cours
-- Programmation en C, un peu d'assembleur
-- Evaluation : code commenté
-  
-## Au menu
+### What we will not cover
+- File system management
+- Resource sharing and inter-process communication
 
-### Entrée
+## Covered topics
 
-- De l'affichage à la console
-- S'il vous plaît ? Je peux vous interrompre ?
-- Il y a des manières, monsieur ! Utilisez l'appel système !
+### Starter
+- Console display  
+- Interrupt management  
+- System calls  
 
-> - Mise en oeuvre de la console
-> - Appel système write
+> Topics:
+> - Console implementation  
+> - write system call
 
-### Le plat
+### Main Course
+- Timer management  
+- Process creation and destruction  
+- Scheduling and round-robin execution  
 
-- Tic Tac Tic Tac, respectez le Timer !
-- Des processus ? Comment tu définis ça ?
-- Alors toi, tu crées des processus et tu les détruis.
-- Il faudrait organiser tout ce beau monde, non ?
-  - Et hop ! Tout le monde en file !
-  - Laissez un peu la place aux autres ! Revenez dans la file ! Respectez le tourniquet !
+> Topics:
+> - Timer interrupt  
+> - Process scheduling and management
 
-> - Interruption Timer
-> - Ordonnancement et gestions des processus
+### Dessert
+- Keyboard input  
+- Command interpreter  
 
-### Le dessert
+> Topics:
+> - Keyboard reading and read system call  
+> - Simple shell implementation
 
-- C'est bien fichu ici : tu peux commander depuis la table avec un clavier.
+## Tools Setup
 
-> - Lecture au clavier et appel système read
-> - Interpréteur de commandes simple
-
-### Avec ta fourchette !
-
-Il nous faut des couverts !
-
-- Compilation : GCC 
-  
-  ```sudo apt-get install build-essentials```
-
-- Exécution : QEMU
-   
-  ```sudo apt-get install qemu```
-
-- Mise au point : GDB
-    
-    - ```sudo apt-get install gdb```
-    - GDB sera connecté à QEMU et permet d'afficher les problèmes potentiels
+### Compilation
+```bash
+sudo apt-get install build-essential
+```
+### Execution
+``` bash
+sudo apt-get install qemu
+```
+### Debugging
+``` bash
+sudo apt-get install gdb
+```
+> GDB connects to QEMU to help detect and analyze potential issues.
 
 > [!NOTE]
-> Les commandes données sont pour environnement Debian et dérivés (j'utilise Ubuntu). A adapter en fonction de votre distribution Linux.   
-> Sous Mac : Utiliser les outils `gcc` pour x86 disponible via les `macports` (paquet `i386-elf-gcc`).
-
-## Les amuses-bouches
-
-### Fichiers fournis 
-
-Le répertoire fourni contient :
-
-- `/boot` 
-  - répertoire d'entrée du système ;
-  - `crt0.S` initialise le matériel et lance le programme principal du système (`kernel_start`)
+> Commands are for Debian and derivatives (I use Ubuntu). Adapt based on your Linux distribution.
+> On Mac: Use x86 `gcc` tools via `macports` (package `i386-elf-gcc`).
+## The Amuse-Bouches
+### Project Structure
+- `/boot`
+  - Boot directory;
+  - `crt0.S` initializes hardware and starts the main system program (`kernel_start`)
 - `/kernel`
-  - répertoire sources du noyau
-  - c'est ici que tout (ou presque) va se passer
+  - Kernel source directory
+  - This is where most things will happen
 - `/lib`
-  - quelques outils utiles (par ex.: `printf`)
+  - Some useful tools (e.g., `printf`)
 - `/include`
-  - pour les `.h` c'est ici
+  - For `.h` files
 
-### Prise en main de l'environnement
+### Getting Started with the Environment
 
-- La compilation s'effectue via la commande `make`
-  - si tout va bien, résultat : `kernel.bin`
-- Exécution : `make run`
-  - Une fenêtre QEMU doit apparaître
-  - Le système est exécuté
-- Mise au point 
-  - Lancer : `make dbg`
-  - Mettre un point d'arrêt au début du système : `b kernel_start`
-  - Lancer l'exécution : `cont` ou `r`
-  - Afficher un variable : `display` nom de la variable
-  - `n`: Next, `s` : Step
+- Compilation via `make` command
+  - If all goes well, result: `kernel.bin`
+- Execution: `make run`
+  - A QEMU window should appear
+  - The system runs
+- Debugging
+  - Launch: `make dbg`
+  - Set breakpoint at system start: `b kernel_start`
+  - Run execution: `cont` or `r`
+  - Display a variable: `display` variable name
+  - `n`: Next, `s`: Step
+
+## Usage
+### Compilation
+``` bash
+make
+```
+> Result : `kernel.bin`
+
+### Run
+``` bash
+make run
+```
+> A QEMU window should appear and the OS will start.
+
+### Debugging
+``` bash
+make dbg
+```
+Then inside GDB:
+``` nginx
+b kernel_start     # Set breakpoint at system start
+cont or r          # Run
+display <variable> # Show variable value
+n                  # Next
+s                  # Step into
+```
+
+## Demo
+### OS commands
+```shell
+help
+```
+> This command prints the available commands.
+[help](./images/help.png)
+
+### Runner Game
+```shell
+run runner
+```
+> This command starts the runner game.
+[runner](./images/runner.png)
+
+### Snake Game
+```shell
+run snake
+```
+> This command starts the snake game.
+[snake](./images/snake.png)
